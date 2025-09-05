@@ -123,7 +123,7 @@ export default function AdvancedCustomization({ initialSettings, onSave, isSavin
                     <Label htmlFor="footer_links">Links do Rodapé (separados por linha)</Label>
                     <Textarea
                       id="footer_links"
-                      placeholder="Sobre Nós|/sobre&#10;Contato|/contato&#10;Termos de Uso|/termos&#10;Política de Privacidade|/privacidade"
+                      placeholder="Sobre Nós|/sobre&#10;Contato|/contato&#10;Página de Links|/Links"
                       value={customData.footer_links}
                       onChange={(e) => handleChange("footer_links", e.target.value)}
                       className="min-h-20"

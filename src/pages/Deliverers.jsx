@@ -20,7 +20,18 @@ export default function Deliverers() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const isDark = document.documentElement.classList.contains('dark');
+    setDarkMode(isDark);
+    const observer = new MutationObserver(() => {
+      setDarkMode(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   // loadDeliverers is now memoized using useCallback
   const loadDeliverers = useCallback(async () => {
@@ -39,12 +50,12 @@ export default function Deliverers() {
   const checkAdminAccess = useCallback(async () => {
     try {
       const user = await User.me();
-      // Verifica se o usuário é o admin pelo email
-      if (user.email !== 'ericlesrobsom03@gmail.com') {
+      // Verifica se o usuário é admin pela função (role)
+      if (user.role !== 'admin') {
         navigate(createPageUrl("Store"));
         return;
       }
-      // Only load deliverers if user is the specific admin
+      // Only load deliverers if user is admin
       await loadDeliverers();
     } catch (error) {
       // If there's an error (e.g., not logged in or session expired), redirect to login
@@ -104,12 +115,12 @@ export default function Deliverers() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen">
+    <div className={`p-6 space-y-6 min-h-screen transition-colors duration-300 ${darkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-slate-50 to-blue-50'}`}>
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">Entregadores</h1>
-            <p className="text-slate-600">Gerencie sua equipe de entrega</p>
+            <h1 className={`text-3xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Entregadores</h1>
+            <p className={`${darkMode ? 'text-gray-400' : 'text-slate-600'}`}>Gerencie sua equipe de entrega</p>
           </div>
           <Button
             onClick={() => {
@@ -131,14 +142,14 @@ export default function Deliverers() {
               placeholder="Buscar entregadores..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className={`pl-10 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}`}
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full md:w-48">
+            <SelectTrigger className={`w-full md:w-48 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}`}>
               <SelectValue placeholder="Filtrar status" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className={`${darkMode ? 'bg-gray-800 border-gray-700 text-white' : ''}`}>
               <SelectItem value="all">Todos Status</SelectItem>
               <SelectItem value="disponivel">Disponível</SelectItem>
               <SelectItem value="ocupado">Ocupado</SelectItem>
@@ -155,6 +166,7 @@ export default function Deliverers() {
               setShowForm(false);
               setEditingDeliverer(null);
             }}
+            darkMode={darkMode}
           />
         )}
 
@@ -163,6 +175,7 @@ export default function Deliverers() {
           loading={loading}
           onEdit={handleEdit}
           onStatusChange={handleStatusChange}
+          darkMode={darkMode}
         />
       </div>
     </div>

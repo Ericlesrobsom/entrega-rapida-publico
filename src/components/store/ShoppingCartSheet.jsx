@@ -1,126 +1,107 @@
-
-import React from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import React, { useState, useEffect } from 'react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Trash2, ShoppingCart, Minus, Plus } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { X, Trash2, Minus, Plus } from "lucide-react";
 
-const translations = {
-  pt: {
-    title: "Seu Carrinho",
-    emptyTitle: "Seu carrinho está vazio",
-    emptySubtitle: "Adicione produtos para começar.",
-    subtotal: "Subtotal",
-    checkout: "Finalizar Compra"
-  },
-  en: {
-    title: "Your Cart",
-    emptyTitle: "Your cart is empty",
-    emptySubtitle: "Add products to get started.",
-    subtotal: "Subtotal",
-    checkout: "Checkout"
-  }
-};
+export default function ShoppingCartSheet({ isOpen, onClose, cartItems, onUpdateItem, onRemoveItem, onClearCart, onCheckout, calculateTotal, language, t }) {
+  const [darkMode, setDarkMode] = useState(false);
 
-export default function ShoppingCartSheet({ 
-  isOpen, 
-  onClose, 
-  cartItems = [], 
-  onUpdateItem, 
-  onRemoveItem, 
-  onClearCart, 
-  onCheckout, 
-  calculateTotal, 
-  language = 'pt', 
-  t 
-}) {
-  // Função simples de tradução
-  const getTranslation = (key) => {
-    if (t && typeof t === 'object' && t[key]) {
-      return t[key];
-    }
-    return translations[language][key] || key;
-  };
+  useEffect(() => {
+    const isDark = document.documentElement.classList.contains('dark');
+    setDarkMode(isDark);
 
-  // Calcular subtotal
-  const subtotal = calculateTotal ? calculateTotal() : 
-    cartItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+    const observer = new MutationObserver(() => {
+      const newIsDark = document.documentElement.classList.contains('dark');
+      setDarkMode(newIsDark);
+    });
+
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="flex flex-col">
-        <SheetHeader>
-          <SheetTitle className="text-2xl font-bold">{getTranslation('title')}</SheetTitle>
+      <SheetContent className={`flex flex-col p-0 transition-colors duration-300 ${
+        darkMode ? 'bg-gray-900 text-white' : 'bg-white text-slate-900'
+      }`}>
+        <SheetHeader className={`p-6 border-b transition-colors duration-300 ${
+          darkMode ? 'border-gray-700' : 'border-slate-200'
+        }`}>
+          <SheetTitle className="text-xl font-bold">{t.cart}</SheetTitle>
         </SheetHeader>
-        
-        {!cartItems || cartItems.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center">
-            <ShoppingCart className="w-24 h-24 text-slate-300 mb-4" />
-            <h3 className="text-xl font-semibold text-slate-800">{getTranslation('emptyTitle')}</h3>
-            <p className="text-slate-500 mt-2">{getTranslation('emptySubtitle')}</p>
+
+        {cartItems.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
+            <div className={`w-24 h-24 rounded-full flex items-center justify-center mb-4 ${
+              darkMode ? 'bg-gray-800' : 'bg-slate-100'
+            }`}>
+              <span className="text-5xl">🛒</span>
+            </div>
+            <p className={darkMode ? 'text-gray-400' : 'text-slate-600'}>{t.emptyCart}</p>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto -mx-6 px-6 py-4">
-            <div className="space-y-4">
-              {cartItems.map(item => (
-                <div key={item.product?.id || item.id} className="flex gap-4">
-                  <img 
-                    src={item.product?.image_url || item.image_url || 'https://via.placeholder.com/80x80?text=Produto'} 
-                    alt={item.product?.name || item.name} 
-                    className="w-20 h-20 object-cover rounded-lg" 
-                  />
+          <ScrollArea className="flex-1">
+            <div className="p-6 space-y-4">
+              {cartItems.map((item, index) => (
+                <div key={item.product.id || index} className={`flex gap-4 items-center p-3 rounded-lg shadow-sm border transition-colors duration-300 ${
+                  darkMode 
+                    ? 'bg-gray-800 border-gray-700' 
+                    : 'bg-slate-50 border-slate-100'
+                }`}>
+                  <img src={item.product.image_url} alt={item.product.name} className="w-20 h-20 object-cover rounded-md" />
                   <div className="flex-1">
-                    <h4 className="font-semibold">{item.product?.name || item.name}</h4>
-                    <p className="text-slate-500">R$ {(item.product?.price || item.price || 0).toFixed(2)}</p>
-                    <div className="flex items-center justify-between mt-2">
-                      <div className="flex items-center border rounded-md">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8" 
-                          onClick={() => onUpdateItem && onUpdateItem(item.product?.id || item.id, item.quantity - 1)}
-                        >
-                          <Minus className="w-4 h-4" />
-                        </Button>
-                        <span className="px-2">{item.quantity}</span>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8" 
-                          onClick={() => onUpdateItem && onUpdateItem(item.product?.id || item.id, item.quantity + 1)}
-                        >
-                          <Plus className="w-4 h-4" />
-                        </Button>
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => onRemoveItem && onRemoveItem(item.product?.id || item.id)}
-                        className="hover:bg-red-50 p-2 rounded-full shadow-md hover:shadow-lg transition-all duration-200"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500 hover:text-red-600" />
+                    <p className={`font-semibold line-clamp-2 ${
+                      darkMode ? 'text-gray-200' : 'text-slate-800'
+                    }`}>{item.product.name}</p>
+                    <p className={`text-sm ${
+                      darkMode ? 'text-gray-400' : 'text-slate-500'
+                    }`}>R$ {item.product.price.toFixed(2).replace('.', ',')}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onUpdateItem(item.product.id, item.quantity - 1)}>
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="w-8 text-center">{item.quantity}</span>
+                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onUpdateItem(item.product.id, item.quantity + 1)}>
+                        <Plus className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
+                  <Button variant="ghost" size="icon" className={`hover:text-red-500 ${
+                    darkMode ? 'text-slate-400 hover:bg-red-900/50' : 'text-slate-500 hover:bg-red-50'
+                  }`} onClick={() => onRemoveItem(item.product.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
             </div>
-          </div>
+          </ScrollArea>
         )}
-        
-        {cartItems && cartItems.length > 0 && (
-          <SheetFooter className="border-t pt-6">
+
+        {cartItems.length > 0 && (
+          <SheetFooter className={`p-6 border-t backdrop-blur-sm transition-colors duration-300 ${
+            darkMode 
+              ? 'border-gray-700 bg-gray-900/80' 
+              : 'border-slate-200 bg-slate-50/80'
+          }`}>
             <div className="w-full space-y-4">
-              <div className="flex justify-between font-semibold text-lg">
-                <span>{getTranslation('subtotal')}</span>
-                <span>R$ {subtotal.toFixed(2)}</span>
+              <div className="flex justify-between items-center">
+                <span className={darkMode ? 'text-gray-300' : 'text-slate-600'}>{t.total}:</span>
+                <span className="font-semibold text-xl text-[--store-primary]">
+                  R$ {calculateTotal.toFixed(2).replace('.', ',')}
+                </span>
               </div>
               <Button 
-                size="lg" 
-                className="w-full text-white" 
-                style={{ backgroundColor: 'var(--store-primary)' }}
-                onClick={onCheckout}
+                onClick={onCheckout} 
+                className="w-full text-white bg-[--store-primary] hover:opacity-90 transition-opacity shadow-lg"
+                size="lg"
               >
-                {getTranslation('checkout')}
+                {t.checkout}
+              </Button>
+              <Button onClick={onClearCart} variant="ghost" className={`w-full hover:text-red-500 ${
+                darkMode ? 'text-gray-400' : 'text-slate-500'
+              }`}>
+                <Trash2 className="h-4 w-4 mr-2" /> Limpar Carrinho
               </Button>
             </div>
           </SheetFooter>

@@ -1,121 +1,142 @@
-import React from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Edit, Trash2, ExternalLink, BarChart3 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 
-export default function AdvertisementList({ advertisements, loading, onEdit, onDelete, onToggleStatus }) {
-  const getPositionLabel = (position) => {
-    const labels = {
-      "after_featured": "Depois dos Destaques",
-      "after_categories": "Depois das Categorias", 
-      "middle_products": "Meio dos Produtos",
-      "before_footer": "Antes do Rodapé"
-    };
-    return labels[position] || position;
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch"; // Retained if needed elsewhere, but removed from AdvertisementItem
+import { Label } from "@/components/ui/label"; // Retained if needed elsewhere, but removed from AdvertisementItem
+import { Button } from "@/components/ui/button";
+import { Edit, Eye, BarChart, MoreVertical, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge"; // New import for Badge
+
+function AdvertisementItem({ ad, onEdit, onDelete, onToggleStatus }) {
+  const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    // Initial check for dark mode
+    const isDark = document.documentElement.classList.contains('dark');
+    setDarkMode(isDark);
+
+    // Observe changes to the 'class' attribute of the html element
+    const observer = new MutationObserver(() => {
+      setDarkMode(document.documentElement.classList.contains('dark'));
+    });
+
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+    // Cleanup observer on component unmount
+    return () => observer.disconnect();
+  }, []);
+
+  const positionLabel = {
+    'header': 'Cabeçalho',
+    'sidebar': 'Barra Lateral',
+    'footer': 'Rodapé',
+    'content': 'Conteúdo Principal',
+    'popup': 'Pop-up',
+    'banner': 'Banner',
+    'homepage': 'Página Inicial',
+    'search': 'Página de Busca',
+    'default': 'Posição Desconhecida' // Fallback for undefined positions
   };
 
+  return (
+    <Card className={`overflow-hidden shadow-lg border-0 transition-all duration-300 ${darkMode ? 'bg-gray-800 text-white' : 'bg-white'}`}>
+      <CardContent className="p-4 flex flex-col md:flex-row items-center gap-4">
+        <img
+          src={ad.image_url}
+          alt={ad.title}
+          className="w-full md:w-40 h-24 object-cover rounded-lg"
+        />
+        <div className="flex-1">
+          <h3 className="font-semibold text-lg">{ad.title}</h3>
+          <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-slate-600'}`}>
+            {positionLabel[ad.position] || positionLabel.default}
+          </p>
+          {ad.link_url && (
+            <p className={`text-xs truncate ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>{ad.link_url}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-4">
+          <Badge 
+            variant={ad.is_active ? 'default' : 'secondary'} 
+            className={ad.is_active ? 
+              `${darkMode ? 'bg-green-800/80 text-green-200' : 'bg-green-100 text-green-800'}` : 
+              `${darkMode ? 'bg-red-800/80 text-red-200' : 'bg-red-100 text-red-800'}`
+            }
+          >
+            {ad.is_active ? "Ativo" : "Inativo"}
+          </Badge>
+          {ad.priority !== undefined && ( // Only show priority if it exists
+            <Badge variant="outline" className={darkMode ? 'border-gray-600 text-gray-300' : 'border-gray-200 text-slate-700'}>
+              Prioridade: {ad.priority}
+            </Badge>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className={darkMode ? 'bg-gray-900 border-gray-700 text-white' : ''}>
+              <DropdownMenuItem onClick={() => onEdit(ad)}>
+                <Edit className="w-4 h-4 mr-2" /> Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onToggleStatus(ad)}>
+                {ad.is_active ? (
+                  <>
+                    <ToggleLeft className="w-4 h-4 mr-2" /> Desativar
+                  </>
+                ) : (
+                  <>
+                    <ToggleRight className="w-4 h-4 mr-2" /> Ativar
+                  </>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => onDelete(ad)} 
+                className="text-red-500 focus:text-red-500 focus:bg-red-50 dark:focus:bg-red-900/50"
+              >
+                <Trash2 className="w-4 h-4 mr-2" /> Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function AdvertisementList({ advertisements, loading, onEdit, onDelete, onToggleStatus }) {
   if (loading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Array(6).fill(0).map((_, i) => (
-          <Card key={i} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardContent className="p-4">
-              <Skeleton className="w-full h-32 rounded-lg mb-4" />
-              <Skeleton className="h-4 w-3/4 mb-2" />
-              <Skeleton className="h-4 w-1/2" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+    return <p>Carregando anúncios...</p>;
   }
 
   if (advertisements.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-4">
-          <BarChart3 className="w-8 h-8 text-slate-400" />
-        </div>
         <h3 className="text-xl font-semibold text-slate-900 mb-2">Nenhum anúncio encontrado</h3>
-        <p className="text-slate-600">Clique em "Novo Anúncio" para criar seu primeiro banner promocional.</p>
+        <p className="text-slate-600">Clique em "Novo Anúncio" para criar o seu primeiro.</p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="space-y-4">
       {advertisements.map((ad) => (
-        <Card key={ad.id} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardContent className="p-4">
-            <div className="relative mb-4">
-              <img 
-                src={ad.image_url} 
-                alt={ad.title || "Anúncio"} 
-                className="w-full h-32 object-cover rounded-lg"
-              />
-              {ad.link_url && (
-                <div className="absolute top-2 right-2">
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs">
-                    <ExternalLink className="w-3 h-3 mr-1" />
-                    Link
-                  </Badge>
-                </div>
-              )}
-            </div>
-            
-            <div className="space-y-3">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-slate-900 line-clamp-1">{ad.title}</h3>
-                  {ad.description && (
-                    <p className="text-sm text-slate-600 line-clamp-2 mt-1">{ad.description}</p>
-                  )}
-                </div>
-                <Badge variant="outline" className="ml-2 text-xs">
-                  Prioridade {ad.priority}
-                </Badge>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="text-xs">
-                  📍 {getPositionLabel(ad.position)}
-                </Badge>
-                {ad.click_count > 0 && (
-                  <Badge variant="outline" className="text-xs">
-                    👁️ {ad.click_count} cliques
-                  </Badge>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between pt-3 border-t">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id={`active-${ad.id}`}
-                    checked={ad.is_active}
-                    onCheckedChange={() => onToggleStatus(ad)}
-                    size="sm"
-                  />
-                  <Label htmlFor={`active-${ad.id}`} className="text-sm">
-                    {ad.is_active ? "Ativo" : "Inativo"}
-                  </Label>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => onEdit(ad)}>
-                    <Edit className="w-3 h-3" />
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => onDelete(ad)} className="text-red-600 hover:text-red-700">
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <AdvertisementItem 
+          key={ad.id} 
+          ad={ad} 
+          onEdit={onEdit} 
+          onDelete={onDelete} 
+          onToggleStatus={onToggleStatus} 
+        />
       ))}
     </div>
   );

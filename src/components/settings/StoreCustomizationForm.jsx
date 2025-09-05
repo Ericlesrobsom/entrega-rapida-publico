@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,17 +6,21 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Save, Palette, Upload, Loader2, Type, EyeOff } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Adicionar Select
+import { Save, Palette, Upload, Loader2, Type, EyeOff, Store } from "lucide-react"; // Adicionar Store icon
 import { UploadFile } from "@/api/integrations";
 import { toast } from "sonner";
 
 export default function StoreCustomizationForm({ initialSettings, onSave, isSaving }) {
   const [settingsData, setSettingsData] = useState({
+    store_name: "",
     store_primary_color: "#2563eb",
     store_secondary_color: "#4f46e5",
     store_logo_url: "",
     store_header_text: "",
     store_subtitle_text: "",
+    font_size_desktop: "medium",
+    font_size_mobile: "small",
     show_featured_products: true,
   });
   const [isUploading, setIsUploading] = useState(false);
@@ -23,11 +28,14 @@ export default function StoreCustomizationForm({ initialSettings, onSave, isSavi
   useEffect(() => {
     if (initialSettings) {
       setSettingsData({
+        store_name: initialSettings.store_name || "",
         store_primary_color: initialSettings.store_primary_color || "#2563eb",
         store_secondary_color: initialSettings.store_secondary_color || "#4f46e5",
         store_logo_url: initialSettings.store_logo_url || "",
         store_header_text: initialSettings.store_header_text || "",
         store_subtitle_text: initialSettings.store_subtitle_text || "",
+        font_size_desktop: initialSettings.font_size_desktop || initialSettings.font_size || "medium",
+        font_size_mobile: initialSettings.font_size_mobile || "small",
         show_featured_products: initialSettings.show_featured_products !== undefined ? initialSettings.show_featured_products : true,
       });
     }
@@ -71,26 +79,45 @@ export default function StoreCustomizationForm({ initialSettings, onSave, isSavi
             <div>
               <CardTitle>Personalizar Loja</CardTitle>
               <CardDescription>
-                Altere a aparência e os textos da sua loja principal.
+                Altere a aparência, nome e configurações da sua loja.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-8">
-          {/* Logo */}
-          <div className="space-y-2">
-            <Label>Logo da Loja</Label>
-            <div className="flex items-center gap-4">
-              {settingsData.store_logo_url && (
-                <img src={settingsData.store_logo_url} alt="Logo" className="w-20 h-20 object-contain rounded-lg bg-slate-100 p-2" />
-              )}
-              <Input id="logo-upload" type="file" accept="image/*" onChange={handleLogoUpload} disabled={isUploading} className="hidden" />
-              <Button asChild variant="outline" disabled={isUploading}>
-                <Label htmlFor="logo-upload" className="cursor-pointer">
-                  {isUploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-                  {isUploading ? "Enviando..." : "Trocar Logo"}
-                </Label>
-              </Button>
+          {/* Identidade da Loja */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Store className="w-5 h-5 text-slate-500"/>
+              <h3 className="font-semibold text-lg">Identidade da Loja</h3>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="store_name">Nome da Loja</Label>
+              <Input 
+                id="store_name" 
+                value={settingsData.store_name} 
+                onChange={(e) => handleChange("store_name", e.target.value)} 
+                placeholder="Ex: Minha Loja Online" 
+              />
+              <p className="text-xs text-slate-500">Nome que aparece no cabeçalho do site</p>
+            </div>
+
+            {/* Logo */}
+            <div className="space-y-2">
+              <Label>Logo da Loja</Label>
+              <div className="flex items-center gap-4">
+                {settingsData.store_logo_url && (
+                  <img src={settingsData.store_logo_url} alt="Logo" className="w-20 h-20 object-contain rounded-lg bg-slate-100 p-2" />
+                )}
+                <Input id="logo-upload" type="file" accept="image/*" onChange={handleLogoUpload} disabled={isUploading} className="hidden" />
+                <Button asChild variant="outline" disabled={isUploading}>
+                  <Label htmlFor="logo-upload" className="cursor-pointer">
+                    {isUploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                    {isUploading ? "Enviando..." : "Trocar Logo"}
+                  </Label>
+                </Button>
+              </div>
             </div>
           </div>
           
@@ -110,20 +137,69 @@ export default function StoreCustomizationForm({ initialSettings, onSave, isSavi
             </div>
           </div>
 
-          {/* Cores */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="primary_color">Cor Primária</Label>
-              <div className="flex items-center gap-2">
-                <Input id="primary_color" type="color" value={settingsData.store_primary_color} onChange={(e) => handleChange("store_primary_color", e.target.value)} className="w-12 h-10 p-1" />
-                <Input type="text" value={settingsData.store_primary_color} onChange={(e) => handleChange("store_primary_color", e.target.value)} />
+          {/* Aparência */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Palette className="w-5 h-5 text-slate-500"/>
+              <h3 className="font-semibold text-lg">Aparência</h3>
+            </div>
+            
+            {/* Tamanhos de Fonte Responsivos */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="font_size_desktop">Tamanho da Fonte - Desktop</Label>
+                <Select 
+                  value={settingsData.font_size_desktop} 
+                  onValueChange={(value) => handleChange("font_size_desktop", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tamanho para PC" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="small">Pequena</SelectItem>
+                    <SelectItem value="medium">Média (Padrão)</SelectItem>
+                    <SelectItem value="large">Grande</SelectItem>
+                    <SelectItem value="extra-large">Extra Grande</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500">Para computadores e tablets</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="font_size_mobile">Tamanho da Fonte - Mobile</Label>
+                <Select 
+                  value={settingsData.font_size_mobile} 
+                  onValueChange={(value) => handleChange("font_size_mobile", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tamanho para celular" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="extra-small">Extra Pequena</SelectItem>
+                    <SelectItem value="small">Pequena (Recomendado)</SelectItem>
+                    <SelectItem value="medium">Média</SelectItem>
+                    <SelectItem value="large">Grande</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500">Para celulares</p>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="secondary_color">Cor Secundária</Label>
-              <div className="flex items-center gap-2">
-                <Input id="secondary_color" type="color" value={settingsData.store_secondary_color} onChange={(e) => handleChange("store_secondary_color", e.target.value)} className="w-12 h-10 p-1" />
-                <Input type="text" value={settingsData.store_secondary_color} onChange={(e) => handleChange("store_secondary_color", e.target.value)} />
+
+            {/* Cores */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="primary_color">Cor Primária</Label>
+                <div className="flex items-center gap-2">
+                  <Input id="primary_color" type="color" value={settingsData.store_primary_color} onChange={(e) => handleChange("store_primary_color", e.target.value)} className="w-12 h-10 p-1" />
+                  <Input type="text" value={settingsData.store_primary_color} onChange={(e) => handleChange("store_primary_color", e.target.value)} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="secondary_color">Cor Secundária</Label>
+                <div className="flex items-center gap-2">
+                  <Input id="secondary_color" type="color" value={settingsData.store_secondary_color} onChange={(e) => handleChange("store_secondary_color", e.target.value)} className="w-12 h-10 p-1" />
+                  <Input type="text" value={settingsData.store_secondary_color} onChange={(e) => handleChange("store_secondary_color", e.target.value)} />
+                </div>
               </div>
             </div>
           </div>

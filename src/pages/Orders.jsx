@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Order } from "@/api/entities";
 import { Deliverer } from "@/api/entities";
@@ -19,12 +20,23 @@ export default function Orders() {
   const [editingOrder, setEditingOrder] = useState(null);
   const [filters, setFilters] = useState({ status: "all" });
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const isDark = document.documentElement.classList.contains('dark');
+    setDarkMode(isDark);
+    const observer = new MutationObserver(() => {
+      setDarkMode(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   const loadData = useCallback(async () => {
     try {
       const [ordersData, deliverersData] = await Promise.all([
-        Order.list('-created_date'),
+        Order.list('-created_date', 100), // Limita aos 100 pedidos mais recentes
         Deliverer.list()
       ]);
       setOrders(ordersData);
@@ -39,8 +51,8 @@ export default function Orders() {
   const checkAdminAccess = useCallback(async () => {
     try {
       const user = await User.me();
-      // Verifica se o usuário é o admin pelo email
-      if (user.email !== 'ericlesrobsom03@gmail.com') {
+      // Verifica se o usuário é admin pela função (role)
+      if (user.role !== 'admin') {
         navigate(createPageUrl("Store"));
         return;
       }
@@ -98,12 +110,12 @@ export default function Orders() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen">
+    <div className={`p-6 space-y-6 min-h-screen transition-colors duration-300 ${darkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-slate-50 to-blue-50'}`}>
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">Pedidos</h1>
-            <p className="text-slate-600">Gerencie os pedidos da sua loja</p>
+            <h1 className={`text-3xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Pedidos</h1>
+            <p className={`${darkMode ? 'text-gray-400' : 'text-slate-600'}`}>Gerencie os pedidos da sua loja (exibindo os 100 mais recentes)</p>
           </div>
           <Button 
             onClick={() => {
@@ -117,7 +129,7 @@ export default function Orders() {
           </Button>
         </div>
 
-        <OrderFilters filters={filters} onFiltersChange={setFilters} />
+        <OrderFilters filters={filters} onFiltersChange={setFilters} darkMode={darkMode} />
 
         {showForm && (
           <OrderForm
@@ -127,6 +139,7 @@ export default function Orders() {
               setShowForm(false);
               setEditingOrder(null);
             }}
+            darkMode={darkMode}
           />
         )}
 
@@ -134,8 +147,9 @@ export default function Orders() {
           orders={filteredOrders}
           deliverers={deliverers}
           loading={loading}
-          onEdit={setEditingOrder}
+          onEdit={(order) => { setEditingOrder(order); setShowForm(true); }}
           onStatusChange={handleStatusChange}
+          darkMode={darkMode}
         />
       </div>
     </div>

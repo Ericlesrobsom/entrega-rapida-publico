@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,11 +17,17 @@ const statusLabels = {
   inativo: "Inativo"
 };
 
-export default function DeliverersStatus({ deliverers, loading }) {
+export default function DeliverersStatus({ deliverers, loading, darkMode = false }) {
   return (
-    <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+    <Card className={`border-0 shadow-lg transition-colors duration-300 ${
+      darkMode 
+        ? 'bg-gray-800/90 backdrop-blur-sm' 
+        : 'bg-white/80 backdrop-blur-sm'
+    }`}>
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-2 text-slate-900">
+        <CardTitle className={`flex items-center gap-2 transition-colors duration-300 ${
+          darkMode ? 'text-white' : 'text-slate-900'
+        }`}>
           <Truck className="w-5 h-5" />
           Status dos Entregadores
         </CardTitle>
@@ -29,7 +36,9 @@ export default function DeliverersStatus({ deliverers, loading }) {
         <div className="space-y-4">
           {loading ? (
             Array(4).fill(0).map((_, i) => (
-              <div key={i} className="p-3 border border-slate-200 rounded-lg">
+              <div key={i} className={`p-3 border rounded-lg ${
+                darkMode ? 'border-gray-700' : 'border-slate-200'
+              }`}>
                 <div className="flex justify-between items-start mb-2">
                   <Skeleton className="h-4 w-24" />
                   <Skeleton className="h-6 w-20 rounded-full" />
@@ -40,15 +49,23 @@ export default function DeliverersStatus({ deliverers, loading }) {
             ))
           ) : deliverers.length > 0 ? (
             deliverers.map((deliverer) => (
-              <div key={deliverer.id} className="p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+              <div key={deliverer.id} className={`p-3 border rounded-lg hover:bg-opacity-50 transition-colors ${
+                darkMode 
+                  ? 'border-gray-700 hover:bg-gray-700' 
+                  : 'border-slate-200 hover:bg-slate-50'
+              }`}>
                 <div className="flex justify-between items-start mb-2">
-                  <span className="font-medium text-slate-900">{deliverer.name}</span>
+                  <span className={`font-medium transition-colors duration-300 ${
+                    darkMode ? 'text-white' : 'text-slate-900'
+                  }`}>{deliverer.name}</span>
                   <Badge className={statusColors[deliverer.status]}>
                     {statusLabels[deliverer.status]}
                   </Badge>
                 </div>
                 
-                <div className="space-y-1 text-sm text-slate-600">
+                <div className={`space-y-1 text-sm transition-colors duration-300 ${
+                  darkMode ? 'text-gray-400' : 'text-slate-600'
+                }`}>
                   <div className="flex items-center gap-2">
                     <Phone className="w-3 h-3" />
                     {deliverer.phone}
@@ -71,9 +88,13 @@ export default function DeliverersStatus({ deliverers, loading }) {
               </div>
             ))
           ) : (
-            <div className="text-center py-8 text-slate-500">
-              <Truck className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhum entregador cadastrado</p>
+            <div className="text-center py-8">
+              <Truck className={`w-12 h-12 mx-auto mb-4 opacity-50 ${
+                darkMode ? 'text-gray-500' : 'text-slate-500'
+              }`} />
+              <p className={darkMode ? 'text-gray-500' : 'text-slate-500'}>
+                Nenhum entregador cadastrado
+              </p>
             </div>
           )}
         </div>

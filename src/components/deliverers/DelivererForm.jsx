@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Save, X } from "lucide-react";
 
-export default function DelivererForm({ deliverer, onSubmit, onCancel }) {
+export default function DelivererForm({ deliverer, onSubmit, onCancel, darkMode }) {
   const [formData, setFormData] = useState({
     name: deliverer?.name || "",
     phone: deliverer?.phone || "",
@@ -30,9 +31,9 @@ export default function DelivererForm({ deliverer, onSubmit, onCancel }) {
   };
 
   return (
-    <Card className="mb-6 bg-white/90 backdrop-blur-sm border-0 shadow-xl">
+    <Card className={`mb-6 border-0 shadow-xl ${darkMode ? 'bg-gray-800' : 'bg-white/90 backdrop-blur-sm'}`}>
       <CardHeader className="pb-4">
-        <CardTitle className="text-slate-900">
+        <CardTitle className={darkMode ? 'text-white' : 'text-slate-900'}>
           {deliverer ? "Editar Entregador" : "Novo Entregador"}
         </CardTitle>
       </CardHeader>
@@ -40,45 +41,48 @@ export default function DelivererForm({ deliverer, onSubmit, onCancel }) {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome Completo *</Label>
+              <Label htmlFor="name" className={darkMode ? 'text-gray-300' : ''}>Nome Completo *</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => handleChange("name", e.target.value)}
                 placeholder="Digite o nome completo"
                 required
+                className={darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">Telefone *</Label>
+              <Label htmlFor="phone" className={darkMode ? 'text-gray-300' : ''}>Telefone *</Label>
               <Input
                 id="phone"
                 value={formData.phone}
                 onChange={(e) => handleChange("phone", e.target.value)}
                 placeholder="(11) 99999-9999"
                 required
+                className={darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className={darkMode ? 'text-gray-300' : ''}>Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleChange("email", e.target.value)}
                 placeholder="email@exemplo.com"
+                className={darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="vehicle_type">Tipo de Veículo *</Label>
+              <Label htmlFor="vehicle_type" className={darkMode ? 'text-gray-300' : ''}>Tipo de Veículo *</Label>
               <Select value={formData.vehicle_type} onValueChange={(value) => handleChange("vehicle_type", value)}>
-                <SelectTrigger>
+                <SelectTrigger className={darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}>
                   <SelectValue placeholder="Selecione o veículo" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className={darkMode ? 'bg-gray-800 border-gray-700 text-white' : ''}>
                   <SelectItem value="moto">Moto</SelectItem>
                   <SelectItem value="carro">Carro</SelectItem>
                   <SelectItem value="bicicleta">Bicicleta</SelectItem>
@@ -88,12 +92,12 @@ export default function DelivererForm({ deliverer, onSubmit, onCancel }) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
+              <Label htmlFor="status" className={darkMode ? 'text-gray-300' : ''}>Status</Label>
               <Select value={formData.status} onValueChange={(value) => handleChange("status", value)}>
-                <SelectTrigger>
+                <SelectTrigger className={darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className={darkMode ? 'bg-gray-800 border-gray-700 text-white' : ''}>
                   <SelectItem value="disponivel">Disponível</SelectItem>
                   <SelectItem value="ocupado">Ocupado</SelectItem>
                   <SelectItem value="inativo">Inativo</SelectItem>
@@ -102,7 +106,7 @@ export default function DelivererForm({ deliverer, onSubmit, onCancel }) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="rating">Avaliação (0-5)</Label>
+              <Label htmlFor="rating" className={darkMode ? 'text-gray-300' : ''}>Avaliação (0-5)</Label>
               <Input
                 id="rating"
                 type="number"
@@ -112,21 +116,23 @@ export default function DelivererForm({ deliverer, onSubmit, onCancel }) {
                 value={formData.rating}
                 onChange={(e) => handleChange("rating", e.target.value)}
                 placeholder="4.5"
+                className={darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}
               />
             </div>
 
             <div className="md:col-span-2 space-y-2">
-              <Label htmlFor="current_location">Localização Atual</Label>
+              <Label htmlFor="current_location" className={darkMode ? 'text-gray-300' : ''}>Localização Atual</Label>
               <Input
                 id="current_location"
                 value={formData.current_location}
                 onChange={(e) => handleChange("current_location", e.target.value)}
                 placeholder="Bairro ou região atual"
+                className={darkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className={`flex justify-end gap-3 pt-4 ${darkMode ? 'border-t border-gray-700' : 'border-t'}`}>
             <Button type="button" variant="outline" onClick={onCancel}>
               <X className="w-4 h-4 mr-2" />
               Cancelar

@@ -1,24 +1,26 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { Settings as SettingsEntity } from "@/api/entities";
-import { PaymentMethod } from "@/api/entities"; // Novo
+import { PaymentMethod } from "@/api/entities";
 import { User } from "@/api/entities";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import MercadoPagoForm from "../components/settings/MercadoPagoForm";
 import StoreCustomizationForm from "../components/settings/StoreCustomizationForm";
 import AdvancedCustomization from "../components/settings/AdvancedCustomization";
-import PaymentMethodList from "../components/settings/PaymentMethodList"; // Novo
-import PaymentMethodForm from "../components/settings/PaymentMethodForm"; // Novo
+import PaymentMethodList from "../components/settings/PaymentMethodList";
+import PaymentMethodForm from "../components/settings/PaymentMethodForm";
+import GoogleDriveForm from "../components/settings/GoogleDriveForm";
+import GoogleDriveFoldersForm from "../components/settings/GoogleDriveFoldersForm";
 import { Toaster, toast } from 'sonner';
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Settings() {
   const [settings, setSettings] = useState(null);
-  const [paymentMethods, setPaymentMethods] = useState([]); // Novo
-  const [showPaymentForm, setShowPaymentForm] = useState(false); // Novo
-  const [editingPaymentMethod, setEditingPaymentMethod] = useState(null); // Novo
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [editingPaymentMethod, setEditingPaymentMethod] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -48,7 +50,7 @@ export default function Settings() {
   const checkAdminAccess = useCallback(async () => {
     try {
       const user = await User.me();
-      if (user.email !== 'ericlesrobsom03@gmail.com') {
+      if (user.role !== 'admin') {
         navigate(createPageUrl("Store"));
         return;
       }
@@ -96,7 +98,7 @@ export default function Settings() {
         }
         setShowPaymentForm(false);
         setEditingPaymentMethod(null);
-        await loadSettings();
+        await loadSettings(); // Reload settings and payment methods
     } catch (error) {
         console.error("Erro ao salvar forma de pagamento:", error);
         toast.error("Falha ao salvar a forma de pagamento.");
@@ -110,7 +112,7 @@ export default function Settings() {
           try {
               await PaymentMethod.delete(id);
               toast.success("Forma de pagamento excluída.");
-              await loadSettings();
+              await loadSettings(); // Reload settings and payment methods
           } catch(error) {
               console.error("Erro ao excluir:", error);
               toast.error("Falha ao excluir.");
@@ -154,8 +156,22 @@ export default function Settings() {
               onSave={handleSaveSettings}
               isSaving={isSaving}
             />
+
+            {/* Nova seção Google Drive */}
+            <GoogleDriveForm
+              initialSettings={settings}
+              onSave={handleSaveSettings}
+              isSaving={isSaving}
+            />
+
+            {/* Novo formulário para pastas raiz */}
+            <GoogleDriveFoldersForm
+              initialSettings={settings}
+              onSave={handleSaveSettings}
+              isSaving={isSaving}
+            />
             
-            {/* Nova seção para Outras Formas de Pagamento */}
+            {/* Seção de Outras Formas de Pagamento */}
             <div className="space-y-4">
                 <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-8 mb-4">Formas de Pagamento Adicionais</h2>
                 <PaymentMethodList 

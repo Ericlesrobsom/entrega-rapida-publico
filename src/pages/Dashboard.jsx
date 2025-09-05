@@ -25,7 +25,23 @@ export default function Dashboard() {
   const [deliverers, setDeliverers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
   const navigate = useNavigate();
+
+  // Detectar tema escuro
+  useEffect(() => {
+    const isDark = document.documentElement.classList.contains('dark');
+    setDarkMode(isDark);
+
+    const observer = new MutationObserver(() => {
+      const newIsDark = document.documentElement.classList.contains('dark');
+      setDarkMode(newIsDark);
+    });
+
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+    return () => observer.disconnect();
+  }, []);
 
   const loadData = useCallback(async () => {
     try {
@@ -48,8 +64,8 @@ export default function Dashboard() {
   const checkAdminAccess = useCallback(async () => {
     try {
       const user = await User.me();
-      // Verifica se o usuário é o admin pelo email
-      if (user.email !== 'ericlesrobsom03@gmail.com') {
+      // Verifica se o usuário é admin pela função (role)
+      if (user.role !== 'admin') {
         navigate(createPageUrl("Store"));
         return;
       }
@@ -97,11 +113,19 @@ export default function Dashboard() {
   const stats = calculateStats();
 
   return (
-    <div className="p-6 space-y-8 bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen">
+    <div className={`p-6 space-y-8 min-h-screen transition-colors duration-300 ${
+      darkMode 
+        ? 'bg-gradient-to-br from-gray-900 to-gray-800' 
+        : 'bg-gradient-to-br from-slate-50 to-blue-50'
+    }`}>
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Dashboard</h1>
-          <p className="text-slate-600">Acompanhe o desempenho da sua loja</p>
+          <h1 className={`text-3xl font-bold mb-2 transition-colors duration-300 ${
+            darkMode ? 'text-white' : 'text-slate-900'
+          }`}>Dashboard</h1>
+          <p className={`transition-colors duration-300 ${
+            darkMode ? 'text-gray-400' : 'text-slate-600'
+          }`}>Acompanhe o desempenho da sua loja</p>
         </div>
 
         {/* Stats Cards */}
@@ -112,6 +136,7 @@ export default function Dashboard() {
             icon={DollarSign}
             trend={`${stats.todayOrdersCount} pedidos`}
             color="green"
+            darkMode={darkMode}
           />
           <StatsCard
             title="Pedidos Pendentes"
@@ -119,6 +144,7 @@ export default function Dashboard() {
             icon={Clock}
             trend="Requer atenção"
             color="orange"
+            darkMode={darkMode}
           />
           <StatsCard
             title="Produtos Ativos"
@@ -126,6 +152,7 @@ export default function Dashboard() {
             icon={Package}
             trend="No catálogo"
             color="blue"
+            darkMode={darkMode}
           />
           <StatsCard
             title="Entregadores Disponíveis"
@@ -133,18 +160,19 @@ export default function Dashboard() {
             icon={Truck}
             trend={`de ${deliverers.length} total`}
             color="purple"
+            darkMode={darkMode}
           />
         </div>
 
         {/* Main Content Grid */}
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <RecentOrders orders={orders} loading={loading} />
-            <TopProducts products={products} loading={loading} />
+            <RecentOrders orders={orders} loading={loading} darkMode={darkMode} />
+            <TopProducts products={products} loading={loading} darkMode={darkMode} />
           </div>
           
           <div>
-            <DeliverersStatus deliverers={deliverers} loading={loading} />
+            <DeliverersStatus deliverers={deliverers} loading={loading} darkMode={darkMode} />
           </div>
         </div>
       </div>

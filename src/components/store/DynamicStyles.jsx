@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 
 export default function DynamicStyles({ settings }) {
@@ -7,15 +8,76 @@ export default function DynamicStyles({ settings }) {
 
     const elementsToRemove = [];
 
-    // 1. Injetar CSS personalizado e variáveis de cor
-    if (settings.store_primary_color || settings.custom_css) {
+    // Mapear tamanhos de fonte para desktop
+    const fontSizeDesktopMap = {
+      small: '14px',
+      medium: '16px',  // padrão
+      large: '18px',
+      'extra-large': '20px'
+    };
+
+    // Mapear tamanhos de fonte para mobile
+    const fontSizeMobileMap = {
+      'extra-small': '12px',
+      small: '14px',  // recomendado para mobile
+      medium: '16px',
+      large: '18px'
+    };
+
+    const desktopFontSize = fontSizeDesktopMap[settings.font_size_desktop] || 
+                           fontSizeDesktopMap[settings.font_size] || '16px'; // fallback para configuração legado
+    const mobileFontSize = fontSizeMobileMap[settings.font_size_mobile] || '14px';
+
+    // 1. Injetar CSS personalizado e variáveis de cor + fonte responsiva
+    if (settings.store_primary_color || settings.custom_css || settings.font_size_desktop || settings.font_size_mobile) {
       const styleTag = document.createElement('style');
       styleTag.id = 'dynamic-store-styles';
       styleTag.innerHTML = `
         :root {
           --store-primary: ${settings.store_primary_color || '#2563eb'};
           --store-secondary: ${settings.store_secondary_color || '#4f46e5'};
+          --desktop-font-size: ${desktopFontSize};
+          --mobile-font-size: ${mobileFontSize};
         }
+        
+        /* Aplicar tamanho de fonte para desktop (padrão) */
+        html {
+          font-size: var(--desktop-font-size);
+        }
+        
+        body {
+          font-size: 1rem;
+        }
+        
+        /* Aplicar tamanho de fonte para mobile */
+        @media (max-width: 768px) {
+          html {
+            font-size: var(--mobile-font-size);
+          }
+        }
+        
+        /* Ajustes de classes para manter proporções */
+        .text-sm {
+          font-size: 0.875rem;
+        }
+        
+        .text-lg {
+          font-size: 1.125rem;
+        }
+        
+        .text-xl {
+          font-size: 1.25rem;
+        }
+        
+        .text-2xl {
+          font-size: 1.5rem;
+        }
+        
+        .text-3xl {
+          font-size: 1.875rem;
+        }
+        
+        /* CSS personalizado do usuário */
         ${settings.custom_css || ''}
       `;
       document.head.appendChild(styleTag);

@@ -17,7 +17,18 @@ export default function DeliveryMethods() {
   const [showForm, setShowForm] = useState(false);
   const [editingMethod, setEditingMethod] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const isDark = document.documentElement.classList.contains('dark');
+    setDarkMode(isDark);
+    const observer = new MutationObserver(() => {
+      setDarkMode(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -35,7 +46,7 @@ export default function DeliveryMethods() {
   const checkAdminAccess = useCallback(async () => {
     try {
       const user = await User.me();
-      if (user.email !== 'ericlesrobsom03@gmail.com') {
+      if (user.role !== 'admin') {
         navigate(createPageUrl("Store"));
         return;
       }
@@ -98,13 +109,13 @@ export default function DeliveryMethods() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen">
+    <div className={`p-6 space-y-6 min-h-screen transition-colors duration-300 ${darkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-slate-50 to-blue-50'}`}>
       <Toaster richColors position="top-right" />
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">Métodos de Entrega</h1>
-            <p className="text-slate-600">Gerencie como seus produtos serão entregues.</p>
+            <h1 className={`text-3xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Métodos de Entrega</h1>
+            <p className={`${darkMode ? 'text-gray-400' : 'text-slate-600'}`}>Gerencie como seus produtos serão entregues.</p>
           </div>
           <Button 
             onClick={() => {
@@ -126,6 +137,7 @@ export default function DeliveryMethods() {
               setShowForm(false);
               setEditingMethod(null);
             }}
+            darkMode={darkMode}
           />
         )}
 
@@ -134,6 +146,7 @@ export default function DeliveryMethods() {
           loading={loading}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          darkMode={darkMode}
         />
       </div>
     </div>

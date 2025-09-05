@@ -28,6 +28,18 @@ import Advertisements from "./Advertisements";
 
 import Questions from "./Questions";
 
+import Coupons from "./Coupons";
+
+import Courses from "./Courses";
+
+import CoursePlayer from "./CoursePlayer";
+
+import CourseEditor from "./CourseEditor";
+
+import Links from "./Links";
+
+import SocialLinks from "./SocialLinks";
+
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
 const PAGES = {
@@ -59,6 +71,18 @@ const PAGES = {
     Advertisements: Advertisements,
     
     Questions: Questions,
+    
+    Coupons: Coupons,
+    
+    Courses: Courses,
+    
+    CoursePlayer: CoursePlayer,
+    
+    CourseEditor: CourseEditor,
+    
+    Links: Links,
+    
+    SocialLinks: SocialLinks,
     
 }
 
@@ -114,6 +138,18 @@ function PagesContent() {
                 <Route path="/Advertisements" element={<Advertisements />} />
                 
                 <Route path="/Questions" element={<Questions />} />
+                
+                <Route path="/Coupons" element={<Coupons />} />
+                
+                <Route path="/Courses" element={<Courses />} />
+                
+                <Route path="/CoursePlayer" element={<CoursePlayer />} />
+                
+                <Route path="/CourseEditor" element={<CourseEditor />} />
+                
+                <Route path="/Links" element={<Links />} />
+                
+                <Route path="/SocialLinks" element={<SocialLinks />} />
                 
             </Routes>
         </Layout>

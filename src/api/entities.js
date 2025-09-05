@@ -23,6 +23,18 @@ export const Question = base44.entities.Question;
 
 export const PaymentMethod = base44.entities.PaymentMethod;
 
+export const Coupon = base44.entities.Coupon;
+
+export const Course = base44.entities.Course;
+
+export const CourseModule = base44.entities.CourseModule;
+
+export const CourseLesson = base44.entities.CourseLesson;
+
+export const CourseAccess = base44.entities.CourseAccess;
+
+export const SocialLink = base44.entities.SocialLink;
+
 
 
 // auth sdk:

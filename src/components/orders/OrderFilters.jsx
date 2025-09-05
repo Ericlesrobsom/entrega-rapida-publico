@@ -1,22 +1,22 @@
-
 import React from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Filter } from "lucide-react";
+import { Card } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-export default function OrderFilters({ filters, onFiltersChange }) {
+export default function OrderFilters({ filters, onFiltersChange, darkMode }) {
+  const handleStatusChange = (value) => {
+    onFiltersChange({ ...filters, status: value });
+  };
+
   return (
-    <div className="flex gap-4 mb-6">
-      <div className="flex items-center gap-2">
-        <Filter className="w-4 h-4 text-slate-500" />
-        <Select 
-          value={filters.status} 
-          onValueChange={(value) => onFiltersChange({ ...filters, status: value })}
-        >
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Status do Pedido" />
+    <Card className={`p-4 mb-6 shadow-sm ${darkMode ? 'bg-gray-800/50' : 'bg-white/70'}`}>
+      <div className="flex items-center gap-4">
+        <span className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>Filtrar por status:</span>
+        <Select value={filters.status} onValueChange={handleStatusChange}>
+          <SelectTrigger className={`w-[180px] ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}`}>
+            <SelectValue />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos Status</SelectItem>
+          <SelectContent className={darkMode ? 'bg-gray-800 border-gray-700 text-white' : ''}>
+            <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="pendente">Pendente</SelectItem>
             <SelectItem value="confirmado">Confirmado</SelectItem>
             <SelectItem value="preparando">Preparando</SelectItem>
@@ -26,6 +26,6 @@ export default function OrderFilters({ filters, onFiltersChange }) {
           </SelectContent>
         </Select>
       </div>
-    </div>
+    </Card>
   );
 }

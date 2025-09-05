@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Product } from "@/api/entities";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,8 @@ import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { User } from "@/api/entities";
 import { Category } from "@/api/entities";
-import { DeliveryMethod } from "@/api/entities"; // Importar
+import { DeliveryMethod } from "@/api/entities";
+import { toast } from "sonner";
 
 import ProductForm from "../components/products/ProductForm";
 import ProductGrid from "../components/products/ProductGrid";
@@ -16,27 +18,37 @@ import ProductGrid from "../components/products/ProductGrid";
 export default function Products() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [deliveryMethods, setDeliveryMethods] = useState([]); // Adicionar estado
+  const [deliveryMethods, setDeliveryMethods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const isDark = document.documentElement.classList.contains('dark');
+    setDarkMode(isDark);
+    const observer = new MutationObserver(() => {
+      setDarkMode(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // Carregar produtos, categorias e métodos de entrega em paralelo
       const [productsData, categoriesData, deliveryMethodsData] = await Promise.all([
         Product.list('-created_date'),
         Category.filter({ is_active: true }),
-        DeliveryMethod.filter({ is_active: true }) // Carregar métodos de entrega
+        DeliveryMethod.filter({ is_active: true })
       ]);
       setProducts(productsData);
       setCategories(categoriesData);
-      setDeliveryMethods(deliveryMethodsData); // Salvar métodos de entrega
+      setDeliveryMethods(deliveryMethodsData);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
     } finally {
@@ -47,11 +59,11 @@ export default function Products() {
   const checkAdminAccess = useCallback(async () => {
     try {
       const user = await User.me();
-      if (user.email !== 'ericlesrobsom03@gmail.com') {
+      if (user.role !== 'admin') {
         navigate(createPageUrl("Store"));
         return;
       }
-      await loadData(); // Usar a nova função loadData
+      await loadData();
     } catch (error) {
       await User.loginWithRedirect(window.location.href);
     } finally {
@@ -67,14 +79,17 @@ export default function Products() {
     try {
       if (editingProduct) {
         await Product.update(editingProduct.id, productData);
+        toast.success("Produto atualizado com sucesso!");
       } else {
         await Product.create(productData);
+        toast.success("Produto criado com sucesso!");
       }
       setShowForm(false);
       setEditingProduct(null);
-      await loadData(); // Recarregar dados
+      await loadData();
     } catch (error) {
       console.error("Erro ao salvar produto:", error);
+      toast.error("Erro ao salvar produto.");
     }
   };
 
@@ -86,9 +101,30 @@ export default function Products() {
   const handleToggleStatus = async (product) => {
     try {
       await Product.update(product.id, { is_active: !product.is_active });
-      await loadData(); // Recarregar dados
+      toast.success(`Produto ${product.is_active ? 'desativado' : 'ativado'} com sucesso!`);
+      await loadData();
     } catch (error) {
       console.error("Erro ao atualizar status:", error);
+      toast.error("Erro ao atualizar status do produto.");
+    }
+  };
+
+  const handleDelete = async (product) => {
+    const confirmed = window.confirm(
+      `⚠️ ATENÇÃO: EXCLUSÃO PERMANENTE ⚠️\n\n` +
+      `Tem certeza que deseja excluir PERMANENTEMENTE "${product.name}"?\n\n` +
+      `Esta ação NÃO PODE SER DESFEITA!`
+    );
+    
+    if (!confirmed) return;
+
+    try {
+      await Product.delete(product.id);
+      toast.success(`"${product.name}" foi excluído permanentemente.`);
+      loadData();
+    } catch (error) {
+      console.error("Erro ao excluir produto:", error);
+      toast.error("Erro ao excluir produto.");
     }
   };
 
@@ -107,12 +143,12 @@ export default function Products() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen">
+    <div className={`p-6 space-y-6 min-h-screen transition-colors duration-300 ${darkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-slate-50 to-blue-50'}`}>
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">Produtos</h1>
-            <p className="text-slate-600">Gerencie o catálogo da sua loja</p>
+            <h1 className={`text-3xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Produtos</h1>
+            <p className={`${darkMode ? 'text-gray-400' : 'text-slate-600'}`}>Gerencie o catálogo da sua loja</p>
           </div>
           <Button 
             onClick={() => {
@@ -127,23 +163,22 @@ export default function Products() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className={`flex flex-col md:flex-row gap-4 mb-6 p-4 rounded-lg shadow-sm ${darkMode ? 'bg-gray-800/50' : 'bg-white/70'}`}>
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
             <Input
               placeholder="Buscar produtos..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className={`pl-10 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}`}
             />
           </div>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-full md:w-48">
+            <SelectTrigger className={`w-full md:w-48 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}`}>
               <SelectValue placeholder="Filtrar categoria" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className={`${darkMode ? 'bg-gray-800 border-gray-700 text-white' : ''}`}>
               <SelectItem value="all">Todas Categorias</SelectItem>
-              {/* Mapear categorias dinâmicas */}
               {categories.map(category => (
                 <SelectItem key={category.id} value={category.slug}>
                   {category.name}
@@ -162,7 +197,7 @@ export default function Products() {
               setEditingProduct(null);
             }}
             categories={categories}
-            deliveryMethods={deliveryMethods} // Passar para o formulário
+            deliveryMethods={deliveryMethods}
           />
         )}
 
@@ -171,6 +206,7 @@ export default function Products() {
           loading={loading}
           onEdit={handleEdit}
           onToggleStatus={handleToggleStatus}
+          onDelete={handleDelete}
         />
       </div>
     </div>

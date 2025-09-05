@@ -46,7 +46,6 @@ const statusLabels = {
 
 /**
  * AssignDelivererDialog component for assigning a deliverer to an order.
- * Replaces the previous conditional Select for deliverer assignment.
  */
 function AssignDelivererDialog({ order, deliverers, onAssign }) {
   const [selectedDelivererId, setSelectedDelivererId] = useState("");
@@ -62,12 +61,12 @@ function AssignDelivererDialog({ order, deliverers, onAssign }) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button size="sm" variant="outline" className="w-full dark:bg-transparent dark:hover:bg-slate-100 dark:text-slate-800 dark:border-slate-300">
+        <Button size="sm" variant="outline" className="w-full">
           <Truck className="w-4 h-4 mr-2" />
           Atribuir Entregador
         </Button>
       </AlertDialogTrigger>
-      <AlertDialogContent className="light"> {/* Apply 'light' class for dark mode compatibility */}
+      <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Atribuir Entregador para o Pedido #{order.id.slice(-6)}</AlertDialogTitle>
           <AlertDialogDescription>
@@ -105,23 +104,22 @@ function AssignDelivererDialog({ order, deliverers, onAssign }) {
 
 /**
  * OrderCard component for displaying individual order details.
- * Encapsulates the rendering of a single order card, including status updates and deliverer assignment.
  */
-function OrderCard({ order, deliverers, onEdit, onStatusChange }) {
+function OrderCard({ order, deliverers, onEdit, onStatusChange, darkMode }) {
   const deliverer = deliverers.find(d => d.id === order.deliverer_id);
 
   return (
-    <Card key={order.id} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+    <Card key={order.id} className={`shadow-lg hover:shadow-xl transition-all duration-300 border-0 ${darkMode ? 'bg-gray-800 text-white' : 'bg-white/80 backdrop-blur-sm'}`}>
       <CardContent className="p-6">
         <div className="flex flex-col lg:flex-row justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <User className="w-4 h-4 text-slate-400" />
-                  <span className="font-semibold text-slate-900">{order.customer_name}</span>
+                  <User className={`w-4 h-4 ${darkMode ? 'text-gray-400' : 'text-slate-400'}`} />
+                  <span className={`font-semibold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{order.customer_name}</span>
                 </div>
-                <div className="space-y-1 text-sm text-slate-600">
+                <div className={`space-y-1 text-sm ${darkMode ? 'text-gray-300' : 'text-slate-600'}`}>
                   <div className="flex items-center gap-2">
                     <Phone className="w-3 h-3" />
                     {order.customer_phone}
@@ -149,7 +147,7 @@ function OrderCard({ order, deliverers, onEdit, onStatusChange }) {
                 <Badge className={statusColors[order.status]}>
                   {statusLabels[order.status]}
                 </Badge>
-                <p className="text-sm text-slate-500 mt-1">
+                <p className={`text-sm mt-1 ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>
                   {format(new Date(order.created_date), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                 </p>
               </div>
@@ -157,32 +155,33 @@ function OrderCard({ order, deliverers, onEdit, onStatusChange }) {
 
             <div className="grid md:grid-cols-2 gap-4 mb-4">
               <div>
-                <h4 className="font-medium text-slate-900 mb-2">Itens do Pedido:</h4>
+                <h4 className={`font-medium mb-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Itens do Pedido:</h4>
                 <div className="space-y-1">
                   {order.items?.map((item, index) => (
-                    <div key={index} className="text-sm text-slate-600">
-                      {item.quantity}x {item.product_name} - R$ {item.total?.toFixed(2)}
+                    <div key={index} className={`text-sm flex justify-between ${darkMode ? 'text-gray-300' : 'text-slate-600'}`}>
+                      <span>{item.quantity}x {item.product_name}</span>
+                      <span>R$ {(item.total || 0).toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="text-right">
-                <div className="text-2xl font-bold text-slate-900">
-                  R$ {order.total_amount?.toFixed(2)}
-                </div>
-                {order.delivery_fee > 0 && (
-                  <div className="text-sm text-slate-600">
-                    + R$ {order.delivery_fee?.toFixed(2)} entrega
+              <div className="text-right flex flex-col items-end">
+                 {order.delivery_fee > 0 && (
+                  <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-slate-600'}`}>
+                    + R$ {(order.delivery_fee || 0).toFixed(2)} entrega
                   </div>
                 )}
+                <div className={`text-2xl font-bold mt-auto pt-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                  R$ {(order.final_total || order.total_amount || 0).toFixed(2)}
+                </div>
               </div>
             </div>
 
             {order.notes && (
               <div className="mb-4">
-                <h4 className="font-medium text-slate-900 mb-1">Observações:</h4>
-                <p className="text-sm text-slate-600">{order.notes}</p>
+                <h4 className={`font-medium mb-1 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Observações:</h4>
+                <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-slate-600'}`}>{order.notes}</p>
               </div>
             )}
           </div>
@@ -197,7 +196,6 @@ function OrderCard({ order, deliverers, onEdit, onStatusChange }) {
               Editar
             </Button>
 
-            {/* Replaced Select with DropdownMenu for status change */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="h-9 w-full justify-between pr-2">
@@ -205,12 +203,12 @@ function OrderCard({ order, deliverers, onEdit, onStatusChange }) {
                   <ChevronRight className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="light"> {/* Apply 'light' class for dark mode compatibility */}
+              <DropdownMenuContent align="end" className={darkMode ? 'bg-gray-900 border-gray-700 text-white' : ''}>
                 {Object.keys(statusLabels).map((statusKey) => (
                   <DropdownMenuItem
                     key={statusKey}
                     onClick={() => onStatusChange(order.id, statusKey)}
-                    className={order.status === statusKey ? "font-bold" : ""}
+                    className={`${order.status === statusKey ? "font-bold" : ""} ${darkMode ? 'focus:bg-gray-700' : ''}`}
                   >
                     {statusKey === "confirmado" && <Check className="w-4 h-4 mr-2 text-green-500" />}
                     {statusKey === "cancelado" && <X className="w-4 h-4 mr-2 text-red-500" />}
@@ -220,11 +218,11 @@ function OrderCard({ order, deliverers, onEdit, onStatusChange }) {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {order.status === "saiu_entrega" && !order.deliverer_id && (
+            {order.status === "preparando" && (
               <AssignDelivererDialog
                 order={order}
                 deliverers={deliverers}
-                onAssign={(orderId, delivererId) => onStatusChange(orderId, order.status, delivererId)}
+                onAssign={(orderId, delivererId) => onStatusChange(orderId, 'saiu_entrega', delivererId)}
               />
             )}
           </div>
@@ -236,9 +234,9 @@ function OrderCard({ order, deliverers, onEdit, onStatusChange }) {
 
 /**
  * OrdersList component displays a list of order cards.
- * Manages loading states and renders individual OrderCard components.
  */
-export default function OrdersList({ orders, deliverers, loading, onEdit, onStatusChange }) {
+export default function OrdersList({ orders, deliverers, loading, onEdit, onStatusChange, darkMode }) {
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -264,9 +262,9 @@ export default function OrdersList({ orders, deliverers, loading, onEdit, onStat
   if (orders.length === 0) {
     return (
       <div className="text-center py-12">
-        <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-        <h3 className="text-xl font-semibold text-slate-900 mb-2">Nenhum pedido encontrado</h3>
-        <p className="text-slate-600">Os pedidos aparecerão aqui quando forem criados.</p>
+        <ShoppingCart className={`w-16 h-16 mx-auto mb-4 ${darkMode ? 'text-gray-600' : 'text-slate-400'}`} />
+        <h3 className={`text-xl font-semibold mb-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Nenhum pedido encontrado</h3>
+        <p className={`${darkMode ? 'text-gray-400' : 'text-slate-600'}`}>Os pedidos aparecerão aqui quando forem criados.</p>
       </div>
     );
   }
@@ -280,6 +278,7 @@ export default function OrdersList({ orders, deliverers, loading, onEdit, onStat
           deliverers={deliverers}
           onEdit={onEdit}
           onStatusChange={onStatusChange}
+          darkMode={darkMode}
         />
       ))}
     </div>
