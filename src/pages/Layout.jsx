@@ -21,7 +21,8 @@ import {
   PlayCircle, // Adicionado para Cursos
   Link as LinkIcon, // Adicionado para Links
   Moon,
-  Sun
+  Sun,
+  Megaphone // Adicionado para Ofertas Globais
 } from "lucide-react";
 import {
   Sidebar,
@@ -72,6 +73,11 @@ const navigationItems = [
     title: "Cupons",
     url: createPageUrl("Coupons"),
     icon: "🎫",
+  },
+  {
+    title: "Ofertas Globais",
+    url: createPageUrl("GlobalOffers"),
+    icon: Megaphone,
   },
   {
     title: "Cursos",

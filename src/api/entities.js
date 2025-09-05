@@ -35,6 +35,8 @@ export const CourseAccess = base44.entities.CourseAccess;
 
 export const SocialLink = base44.entities.SocialLink;
 
+export const GlobalOffer = base44.entities.GlobalOffer;
+
 
 
 // auth sdk:

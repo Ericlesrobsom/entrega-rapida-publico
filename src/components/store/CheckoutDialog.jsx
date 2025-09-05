@@ -5,14 +5,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, ShoppingCart, CreditCard, Ticket } from "lucide-react"; // Added Ticket icon
+import { Loader2, ShoppingCart, CreditCard, Ticket, Gift } from "lucide-react";
 import { Coupon } from "@/api/entities";
 import { toast } from "sonner";
 
-export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting, user, cartItems, total, paymentMethods = [], t }) {
+export default function CheckoutDialog({
+  isOpen,
+  onClose,
+  onSubmit,
+  isSubmitting,
+  user,
+  cartItems,
+  total,
+  discountAmount, // Added discountAmount prop
+  paymentMethods = [],
+  isNewCustomerOfferActive,
+  t
+}) {
   const [darkMode, setDarkMode] = useState(false);
   const [customerData, setCustomerData] = useState({
     name: user?.full_name || "",
@@ -21,8 +33,9 @@ export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting
     notes: "",
     payment_method: "", // Will store the name of the selected payment method
     coupon_code: "",
-    discount_amount: 0,
-    final_total: total
+    discount_amount: 0, // This will store coupon discount amount
+    // Initialize final_total based on whether the new customer offer is active
+    final_total: isNewCustomerOfferActive ? total - (discountAmount || 0) : total
   });
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
@@ -41,18 +54,26 @@ export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting
   }, []);
 
   useEffect(() => {
-    // Initialize customer name from user data and final_total
+    // Initialize customer name from user data and reset totals/coupon
+    // customerData.final_total and discount_amount will only reflect coupon application.
+    // The isNewCustomerOfferActive discount is an override applied at render/submit time.
     setCustomerData(prev => ({
       ...prev,
       name: user?.full_name || prev.name,
-      final_total: total,
-      discount_amount: 0, // Reset discount if total changes or dialog reopens
+      // Recalculate final_total based on the new offer logic
+      final_total: isNewCustomerOfferActive ? total - (discountAmount || 0) : total,
+      discount_amount: 0, // Reset discount
       coupon_code: '', // Clear coupon on dialog open
     }));
     setAppliedCoupon(null); // Clear applied coupon on dialog open
-  }, [user, total, isOpen]); // Rerun when user or total changes, or dialog opens/closes
+  }, [user, total, isOpen, isNewCustomerOfferActive, discountAmount]); // Added dependencies for new offer logic
 
   const handleCouponApply = async () => {
+    if (isNewCustomerOfferActive) {
+      toast.info("A oferta de boas-vindas já está ativa. Cupons não podem ser combinados.");
+      return;
+    }
+
     if (!customerData.coupon_code.trim()) {
       toast.error("Digite um código de cupom.");
       return;
@@ -71,7 +92,7 @@ export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting
         setCustomerData(prev => ({
           ...prev,
           discount_amount: 0,
-          final_total: total // Reset total
+          final_total: total // Reset total if coupon is invalid
         }));
         setIsValidatingCoupon(false);
         return;
@@ -85,7 +106,7 @@ export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting
         setCustomerData(prev => ({
           ...prev,
           discount_amount: 0,
-          final_total: total // Reset total
+          final_total: total
         }));
         setIsValidatingCoupon(false);
         return;
@@ -97,7 +118,7 @@ export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting
         setCustomerData(prev => ({
           ...prev,
           discount_amount: 0,
-          final_total: total // Reset total
+          final_total: total
         }));
         setIsValidatingCoupon(false);
         return;
@@ -145,8 +166,14 @@ export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting
       return;
     }
 
+    // Determine the actual final total and discount for submission
+    const actualFinalTotalForSubmission = isNewCustomerOfferActive ? total - discountAmount : customerData.final_total;
+    const actualDiscountAmountForSubmission = isNewCustomerOfferActive ? discountAmount : customerData.discount_amount;
+    const actualCouponCodeForSubmission = isNewCustomerOfferActive ? '' : customerData.coupon_code;
+
     // If a coupon was applied and is valid, increment its usage before submitting the order
-    if (appliedCoupon) {
+    // Only increment coupon usage if new customer offer is NOT active
+    if (appliedCoupon && !isNewCustomerOfferActive) {
       try {
         await Coupon.update(appliedCoupon.id, {
           current_uses: appliedCoupon.current_uses + 1
@@ -160,8 +187,20 @@ export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting
       }
     }
 
-    onSubmit(customerData);
+    // Construct the data to be submitted, ensuring final total and discount reflect active offers
+    const dataToSubmit = {
+      ...customerData,
+      final_total: actualFinalTotalForSubmission,
+      discount_amount: actualDiscountAmountForSubmission,
+      coupon_code: actualCouponCodeForSubmission,
+    };
+
+    onSubmit(dataToSubmit);
   };
+
+  // Calculate the final total to display, prioritizing the new customer offer
+  // Use the passed discountAmount if new customer offer is active
+  const finalTotal = isNewCustomerOfferActive ? total - (discountAmount || 0) : customerData.final_total;
 
   const formatPrice = (value) => {
     return parseFloat(value).toFixed(2).replace('.', ',');
@@ -189,7 +228,7 @@ export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting
             {/* Dados do Cliente */}
             <div className="space-y-4">
               <h3 className={`font-semibold text-lg ${darkMode ? 'text-gray-200' : 'text-slate-800'}`}>Dados do Cliente</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome Completo *</Label>
@@ -202,7 +241,7 @@ export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting
                     className={darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'}
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="phone">Telefone/WhatsApp *</Label>
                   <Input
@@ -234,7 +273,7 @@ export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting
             {/* Resumo do Pedido */}
             <div className="space-y-4">
               <h3 className={`font-semibold text-lg ${darkMode ? 'text-gray-200' : 'text-slate-800'}`}>Resumo do Pedido</h3>
-              
+
               {cartItems.map((item, index) => (
                 <div key={item.product.id || index} className={`flex justify-between items-center p-2 rounded transition-colors duration-300 ${
                   darkMode ? 'bg-gray-700/50' : 'bg-slate-50'
@@ -249,36 +288,42 @@ export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting
                 </div>
               ))}
 
-              {/* Cupom */}
+              {/* Cupom - DESATIVADO SE OFERTA ESTIVER ATIVA */}
               <div className="space-y-2">
-                <Label htmlFor="coupon" className="flex items-center gap-2 text-orange-500 font-semibold">
+                <Label htmlFor="coupon" className={`flex items-center gap-2 font-semibold ${isNewCustomerOfferActive ? 'text-gray-400' : 'text-orange-500'}`}>
                   <Ticket className="w-5 h-5"/>
                   Cupom de Desconto (opcional)
                 </Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="coupon"
-                    value={customerData.coupon_code}
-                    onChange={(e) => setCustomerData({...customerData, coupon_code: e.target.value.toUpperCase()})}
-                    placeholder="Digite o código do cupom"
-                    disabled={appliedCoupon || isValidatingCoupon}
-                    className={darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleCouponApply}
-                    disabled={!customerData.coupon_code || isValidatingCoupon || appliedCoupon}
-                    className="bg-orange-500 hover:bg-orange-600 text-white border border-orange-500"
-                    style={{
-                      borderColor: '#f97316',
-                      backgroundColor: '#f97316'
-                    }}
-                  >
-                    {isValidatingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : "Aplicar"}
-                  </Button>
-                </div>
-                {appliedCoupon && (
+                {isNewCustomerOfferActive ? (
+                  <div className="text-sm p-3 rounded-md bg-green-50 dark:bg-green-900/50 text-green-700 dark:text-green-300">
+                    A oferta de boas-vindas já é o melhor desconto disponível e não pode ser combinada com outros cupons.
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      id="coupon"
+                      value={customerData.coupon_code}
+                      onChange={(e) => setCustomerData({...customerData, coupon_code: e.target.value.toUpperCase()})}
+                      placeholder="Digite o código do cupom"
+                      disabled={appliedCoupon || isValidatingCoupon}
+                      className={darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleCouponApply}
+                      disabled={!customerData.coupon_code || isValidatingCoupon || appliedCoupon}
+                      className="bg-orange-500 hover:bg-orange-600 text-white border border-orange-500"
+                      style={{
+                        borderColor: '#f97316',
+                        backgroundColor: '#f97316'
+                      }}
+                    >
+                      {isValidatingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : "Aplicar"}
+                    </Button>
+                  </div>
+                )}
+                {appliedCoupon && !isNewCustomerOfferActive && (
                   <div className="flex items-center justify-between bg-green-100 p-3 rounded-lg dark:bg-green-800 dark:text-green-50">
                     <div className="flex items-center gap-2">
                       <span className="text-green-800 font-semibold dark:text-green-50">{appliedCoupon.code}</span>
@@ -303,7 +348,12 @@ export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting
                   <span>Subtotal:</span>
                   <span>R$ {formatPrice(total)}</span>
                 </div>
-                {customerData.discount_amount > 0 && (
+                {isNewCustomerOfferActive && discountAmount > 0 ? (
+                  <div className="flex justify-between text-green-600 dark:text-green-400">
+                    <span><Gift className="w-4 h-4 inline mr-1" /> Desconto Novo Cliente (1º produto):</span>
+                    <span>-R$ {formatPrice(discountAmount)}</span>
+                  </div>
+                ) : customerData.discount_amount > 0 && (
                   <div className="flex justify-between text-green-600 dark:text-green-400">
                     <span>Desconto ({appliedCoupon?.code}):</span>
                     <span>-R$ {formatPrice(customerData.discount_amount)}</span>
@@ -311,7 +361,7 @@ export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting
                 )}
                 <div className="flex justify-between text-xl font-bold text-[--store-primary]">
                   <span>Total:</span>
-                  <span>R$ {formatPrice(customerData.final_total)}</span>
+                  <span>R$ {formatPrice(finalTotal)}</span>
                 </div>
               </div>
             </div>
@@ -324,7 +374,7 @@ export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting
                 <CreditCard className="w-5 h-5" />
                 Forma de Pagamento *
               </h3>
-              
+
               <Select value={customerData.payment_method} onValueChange={(value) => setCustomerData({...customerData, payment_method: value})}>
                 <SelectTrigger className={darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'}>
                   <SelectValue placeholder="Escolha a forma de pagamento" />
@@ -359,8 +409,8 @@ export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting
               <Button type="button" variant="outline" onClick={onClose} className="flex-1">
                 Cancelar
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={isSubmitting || !customerData.payment_method}
                 className="flex-1 bg-[--store-primary] text-white hover:opacity-90 transition-opacity"
               >
@@ -370,7 +420,7 @@ export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting
                     Processando...
                   </>
                 ) : (
-                  `Finalizar Pedido - R$ ${formatPrice(customerData.final_total)}`
+                  `Finalizar Pedido - R$ ${formatPrice(finalTotal)}`
                 )}
               </Button>
             </div>

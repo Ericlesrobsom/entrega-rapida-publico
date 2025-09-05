@@ -11,7 +11,7 @@ import { PaymentMethod } from "@/api/entities";
 import { Advertisement } from "@/api/entities";
 import { Question } from "@/api/entities";
 import { Course } from "@/api/entities";
-import { CourseAccess } from "@/api/entities"; // IMPORTANTE: Adicionar CourseAccess
+import { CourseAccess } from "@/api/entities";
 import { Search, X, MessageCircle, PlayCircle, Users, Clock, Moon, Sun, LayoutGrid, List } from "lucide-react";
 import ProductCard from "../components/store/ProductCard";
 import ShoppingCartSheet from "../components/store/ShoppingCartSheet";
@@ -24,6 +24,10 @@ import ProductDetailsModal from "../components/store/ProductDetailsModal";
 import AdvertisementBanner from "../components/store/AdvertisementBanner";
 import CustomerMessagesModal from "../components/store/CustomerMessagesModal";
 import { Toaster, toast } from 'sonner';
+
+// IMPORTAR O NOVO MODAL
+import NewCustomerOfferModal from "../components/store/NewCustomerOfferModal";
+import OfferCountdownBar from "../components/store/OfferCountdownBar";
 
 // Imports for CourseCard components
 import { Card, CardContent, CardFooter, CardTitle } from "@/components/ui/card";
@@ -198,7 +202,7 @@ const translations = {
 
 export default function Store() {
   const [products, setProducts] = useState([]);
-  const [courses, setCourses] = useState([]); // Novo estado para cursos
+  const [courses, setCourses] = useState([]);
   const [categories, setCategories] = useState([]);
   const [deliveryMethods, setDeliveryMethods] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
@@ -220,8 +224,16 @@ export default function Store() {
   const [showProductDetails, setShowProductDetails] = useState(false);
   const [showCustomerMessages, setShowCustomerMessages] = useState(false);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
-  const [darkMode, setDarkMode] = useState(true); // Iniciar como true para o primeiro render
-  const [isGridView, setIsGridView] = useState(false); // Estado para visualização em grade
+  const [darkMode, setDarkMode] = useState(true);
+  const [isGridView, setIsGridView] = useState(false);
+
+  // NOVOS ESTADOS PARA A OFERTA REFORMULADA
+  const [showNewCustomerOffer, setShowNewCustomerOffer] = useState(false);
+  const [isNewCustomerOfferActive, setIsNewCustomerOfferActive] = useState(false);
+  const [offerTimeLeft, setOfferTimeLeft] = useState(0);
+  const [hasCheckedOffer, setHasCheckedOffer] = useState(false);
+  const [showOfferCountdown, setShowOfferCountdown] = useState(false); // NOVA STATE - controla só a exibição do cronômetro
+
 
   const t = translations[language];
 
@@ -237,7 +249,24 @@ export default function Store() {
   };
 
   const calculateCartTotal = () => {
-    return cart.reduce((total, item) => total + item.product.price * item.quantity, 0);
+    const originalTotal = cart.reduce((total, item) => total + item.product.price * item.quantity, 0);
+    
+    // NOVA LÓGICA: Desconto aplicado apenas ao PRIMEIRO produto no carrinho
+    if (isNewCustomerOfferActive && cart.length > 0) {
+      const firstItem = cart[0];
+      const discountOnFirstItem = firstItem.product.price * firstItem.quantity * 0.2;
+      return originalTotal - discountOnFirstItem;
+    }
+    
+    return originalTotal;
+  };
+
+  const getDiscountAmount = () => {
+    if (isNewCustomerOfferActive && cart.length > 0) {
+      const firstItem = cart[0];
+      return firstItem.product.price * firstItem.quantity * 0.2;
+    }
+    return 0;
   };
 
   const handleAddToCart = (productToAdd) => {
@@ -295,11 +324,30 @@ export default function Store() {
 
   const handleConfirmOrder = async (customerData) => {
     setIsSubmittingOrder(true);
+    const originalTotal = cart.reduce((total, item) => total + item.product.price * item.quantity, 0);
+    const discountAmount = getDiscountAmount();
+    const finalTotal = originalTotal - discountAmount;
+    
+    let finalPayload = { 
+      ...customerData, 
+      total_amount: originalTotal,
+      discount_amount: discountAmount,
+      final_total: finalTotal
+    };
+
+    // Se a oferta de novo cliente estiver ativa, aplicar o desconto no payload
+    if (isNewCustomerOfferActive && discountAmount > 0) {
+      finalPayload = {
+        ...finalPayload,
+        coupon_code: "NOVO CLIENTE 20% - 1 PRODUTO",
+      };
+    }
+
     try {
       const orderPayload = {
-        customer_name: customerData.name,
-        customer_phone: customerData.phone,
-        customer_address: customerData.address,
+        customer_name: finalPayload.name,
+        customer_phone: finalPayload.phone,
+        customer_address: finalPayload.address,
         customer_email: user.email,
         items: cart.map((item) => ({
           product_id: item.product.id,
@@ -310,14 +358,14 @@ export default function Store() {
           image_url: item.product.image_url,
           digital_content: item.product.digital_content || null
         })),
-        total_amount: calculateCartTotal(), // Valor original sem desconto
-        coupon_code: customerData.coupon_code || null,
-        discount_amount: customerData.discount_amount || 0,
-        final_total: customerData.final_total || calculateCartTotal(), // Valor final com desconto
+        total_amount: originalTotal,
+        coupon_code: finalPayload.coupon_code || null,
+        discount_amount: finalPayload.discount_amount || 0,
+        final_total: finalPayload.final_total,
         status: 'pendente',
         delivery_fee: 0,
-        notes: customerData.notes || '',
-        payment_method: customerData.payment_method
+        notes: finalPayload.notes || '',
+        payment_method: finalPayload.payment_method
       };
 
       const newOrder = await Order.create(orderPayload);
@@ -340,6 +388,19 @@ export default function Store() {
       setLastOrder(newOrder);
       clearCart();
       setShowCheckout(false);
+      
+      // Desativa a oferta permanentemente após a compra
+      if (isNewCustomerOfferActive) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('newCustomerOfferUsed', 'true');
+          localStorage.removeItem('newCustomerOfferActive');
+          localStorage.removeItem('offerExpiresAt');
+          localStorage.removeItem('offerCountdownDismissed'); // Clear dismissed state as well
+        }
+        setIsNewCustomerOfferActive(false);
+        setOfferTimeLeft(0);
+        setShowOfferCountdown(false); // Hide countdown
+      }
 
     } catch (error) {
       console.error("Failed to create order:", error);
@@ -409,14 +470,96 @@ export default function Store() {
       const currentUser = await User.me();
       setUser(currentUser);
 
+      // LÓGICA CORRIGIDA: Verificar se já foi mostrado, se está ativo, ou se foi usado
+      if (currentUser && !hasCheckedOffer) {
+        const userOrders = await Order.filter({ customer_email: currentUser.email });
+        const offerUsed = typeof window !== 'undefined' && localStorage.getItem('newCustomerOfferUsed') === 'true';
+        const offerActive = typeof window !== 'undefined' && localStorage.getItem('newCustomerOfferActive') === 'true';
+        const offerShown = typeof window !== 'undefined' && localStorage.getItem('newCustomerOfferShown') === 'true';
+
+        // SÓ MOSTRA A OFERTA SE:
+        // 1. Nunca comprou (userOrders.length === 0)
+        // 2. Nunca usou o bônus (!offerUsed) 
+        // 3. Não tem oferta ativa (!offerActive)
+        // 4. Nunca foi mostrado antes (!offerShown)
+        if (userOrders.length === 0 && !offerUsed && !offerActive && !offerShown) {
+          // É um novo cliente, mostrar a oferta após 2 segundos
+          setTimeout(() => setShowNewCustomerOffer(true), 2000);
+        }
+        setHasCheckedOffer(true); // Marca que a checagem foi feita
+      }
+      
       if (currentUser) {
         loadUnreadMessagesCount(currentUser.email);
       }
-    } catch (error)
-    {
+    } catch (error) {
+      // Se não está logado, não mostra a oferta de novo cliente.
       setUser(null);
+      setHasCheckedOffer(true); // Marca que a checagem foi feita
     }
-  }, [loadUnreadMessagesCount]);
+  }, [loadUnreadMessagesCount, hasCheckedOffer]);
+
+  // Timer para controlar a expiração da oferta
+  useEffect(() => {
+    let interval;
+    
+    if (isNewCustomerOfferActive && offerTimeLeft > 0) {
+      interval = setInterval(() => {
+        setOfferTimeLeft(prev => {
+          if (prev <= 1) {
+            // Oferta expirou
+            handleOfferExpire(); // Call the new handler
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isNewCustomerOfferActive, offerTimeLeft]);
+
+  const handleActivateOffer = () => {
+    const now = Date.now();
+    const expiresAt = now + (24 * 60 * 60 * 1000); // 24 horas
+    const timeLeftInSeconds = Math.floor((expiresAt - now) / 1000);
+    
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('newCustomerOfferActive', 'true');
+      localStorage.setItem('offerExpiresAt', expiresAt.toString());
+      localStorage.setItem('newCustomerOfferShown', 'true'); // MARCAR COMO JÁ MOSTRADO
+    }
+    
+    setIsNewCustomerOfferActive(true);
+    setOfferTimeLeft(timeLeftInSeconds);
+    setShowOfferCountdown(true); // Mostrar o cronômetro
+    setShowNewCustomerOffer(false);
+    
+    toast.success("🎉 Desconto de 20% ativado! Válido por 24 horas no primeiro produto do carrinho.");
+  };
+
+  const handleOfferExpire = () => {
+    setIsNewCustomerOfferActive(false);
+    setOfferTimeLeft(0);
+    setShowOfferCountdown(false); // Hide the countdown bar
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('newCustomerOfferActive');
+      localStorage.removeItem('offerExpiresAt');
+      localStorage.removeItem('offerCountdownDismissed'); // Limpar também o dismiss
+      // NÃO remove o 'newCustomerOfferShown' - deixa lá para nunca mais mostrar
+    }
+    toast.info("Sua oferta de desconto expirou.");
+  };
+
+  const handleDismissCountdown = () => {
+    // APENAS esconder o cronômetro, MAS manter o desconto nos produtos
+    setShowOfferCountdown(false);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('offerCountdownDismissed', 'true');
+    }
+  };
 
   useEffect(() => {
     checkUserSession();
@@ -435,8 +578,29 @@ export default function Store() {
   }, [checkUserSession]);
 
   useEffect(() => {
-    try {
-      if (typeof window !== 'undefined') {
+    // Restaurar o estado da oferta ativa do localStorage
+    if (typeof window !== 'undefined') {
+      const offerActive = localStorage.getItem('newCustomerOfferActive') === 'true';
+      const offerUsed = localStorage.getItem('newCustomerOfferUsed') === 'true';
+      const countdownDismissed = localStorage.getItem('offerCountdownDismissed') === 'true';
+      const expiresAt = parseInt(localStorage.getItem('offerExpiresAt') || '0');
+      
+      if (offerActive && !offerUsed && expiresAt > Date.now()) {
+        setIsNewCustomerOfferActive(true);
+        setOfferTimeLeft(Math.floor((expiresAt - Date.now()) / 1000));
+        
+        // SÓ MOSTRAR O CRONÔMETRO SE NÃO FOI DISMISSED
+        if (!countdownDismissed) {
+          setShowOfferCountdown(true);
+        }
+      } else if (offerActive && expiresAt <= Date.now()) {
+        // Oferta expirou, limpar localStorage
+        localStorage.removeItem('newCustomerOfferActive');
+        localStorage.removeItem('offerExpiresAt');
+        localStorage.removeItem('offerCountdownDismissed');
+      }
+      
+      try {
         const savedCart = localStorage.getItem('shoppingCart');
         if (savedCart) {
           setCart(JSON.parse(savedCart));
@@ -446,16 +610,16 @@ export default function Store() {
         if (savedView) {
           setIsGridView(JSON.parse(savedView));
         }
-      }
-    } catch (e) {
-      console.error("Não foi possível carregar o carrinho ou as preferências de visualização:", e);
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('shoppingCart');
-        localStorage.removeItem('store-view');
+      } catch (e) {
+        console.error("Não foi possível carregar o carrinho ou as preferências de visualização:", e);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('shoppingCart');
+          localStorage.removeItem('store-view');
+        }
       }
     }
     loadStoreDataSafely();
-  }, []);
+  }, []); 
 
   // Função para alternar visualização em grade
   const toggleGridView = () => {
@@ -470,7 +634,9 @@ export default function Store() {
   const toggleDarkMode = () => {
     const newDarkMode = !darkMode;
     setDarkMode(newDarkMode);
-    localStorage.setItem('darkMode', JSON.stringify(newDarkMode)); // Salva a preferência
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('darkMode', JSON.stringify(newDarkMode)); // Salva a preferência
+    }
     
     // Aplica/remove a classe no documento para CSS global
     if (newDarkMode) {
@@ -483,6 +649,7 @@ export default function Store() {
   // Carregar preferência de tema salva e ouvir mudanças
   useEffect(() => {
     const applyTheme = () => {
+      if (typeof window === 'undefined') return; // Ensure window is defined for SSR
       const savedDarkMode = localStorage.getItem('darkMode');
       // CRÍTICO: Se não houver preferência salva (novo usuário), define como escuro.
       const isDark = savedDarkMode === null ? true : JSON.parse(savedDarkMode);
@@ -503,14 +670,19 @@ export default function Store() {
     applyTheme();
 
     // Ouve por mudanças no localStorage para sincronizar tema entre abas
-    window.addEventListener('storage', (e) => {
-        if (e.key === 'darkMode') {
-            applyTheme();
-        }
-    });
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', (e) => {
+          if (e.key === 'darkMode') {
+              applyTheme();
+          }
+      });
+    }
+
 
     return () => {
-      window.removeEventListener('storage', applyTheme);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', applyTheme);
+      }
     };
   }, []);
 
@@ -665,14 +837,24 @@ export default function Store() {
           `,
         }}
       />
+      
       <Toaster richColors position="top-center" />
       <DynamicStyles settings={settings} />
 
-      <header className={`shadow p-4 flex justify-between items-center fixed top-0 left-0 right-0 z-10 transition-colors duration-300 ${
+      {/* CRONÔMETRO FIXO NO TOPO */}
+      {isNewCustomerOfferActive && showOfferCountdown && (
+        <OfferCountdownBar 
+          timeLeft={offerTimeLeft}
+          onExpire={handleOfferExpire}
+          onDismiss={handleDismissCountdown}
+        />
+      )}
+
+      <header className={`shadow p-4 flex justify-between items-center fixed top-0 left-0 right-0 z-10 transition-all duration-300 ${
         darkMode 
           ? 'bg-gray-800 border-b border-gray-700' 
           : 'bg-white'
-      }`}>
+      } ${isNewCustomerOfferActive && showOfferCountdown ? 'mt-16' : ''}`}>
         <div className="flex items-center gap-4">
           {settings.store_logo_url &&
           <img src={settings.store_logo_url} alt="Logo" className="h-10 w-auto" />
@@ -702,7 +884,7 @@ export default function Store() {
                 user={user}
                 unreadMessagesCount={unreadMessagesCount}
                 onOpenMessages={() => setShowCustomerMessages(true)}
-                darkMode={darkMode} // Passa o tema como prop
+                darkMode={darkMode}
               />
             )}
           </div>
@@ -729,14 +911,14 @@ export default function Store() {
                 user={user}
                 unreadMessagesCount={unreadMessagesCount}
                 onOpenMessages={() => setShowCustomerMessages(true)}
-                darkMode={darkMode} // Passa o tema como prop
+                darkMode={darkMode}
               />
             )}
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto p-4 pt-20">
+      <main className={`container mx-auto p-4 ${isNewCustomerOfferActive && showOfferCountdown ? 'pt-32' : 'pt-20'}`}>
         <BannerCarousel banners={getFilteredBanners()} />
 
         <section className="mb-6">
@@ -851,8 +1033,10 @@ export default function Store() {
                         onViewDetails={handleViewProductDetails}
                         language={language}
                         deliveryMethod={method}
-                        isGridView={isGridView} // Passar a propriedade
-                        darkMode={darkMode} // Passa o tema como prop
+                        isGridView={isGridView}
+                        darkMode={darkMode}
+                        isNewCustomerOfferActive={isNewCustomerOfferActive} // SEMPRE passa esta prop
+                        isFirstInCart={cart.length === 0} // Nova prop para identificar se será o primeiro produto
                       />
                     </React.Fragment>
                   );
@@ -865,7 +1049,7 @@ export default function Store() {
                     course={course}
                     onEnroll={() => handleEnrollCourse(course)}
                     language={language}
-                    darkMode={darkMode} // Passa o tema como prop
+                    darkMode={darkMode}
                   />
                 ))}
               </div>
@@ -887,6 +1071,9 @@ export default function Store() {
         onClearCart={clearCart}
         onCheckout={handleInitiateCheckout}
         calculateTotal={calculateCartTotal()}
+        originalTotal={cart.reduce((total, item) => total + item.product.price * item.quantity, 0)}
+        discountAmount={getDiscountAmount()}
+        isNewCustomerOfferActive={isNewCustomerOfferActive}
         language={language}
         t={t} />
 
@@ -898,8 +1085,10 @@ export default function Store() {
         isSubmitting={isSubmittingOrder}
         user={user}
         cartItems={cart}
-        total={calculateCartTotal()}
+        total={cart.reduce((total, item) => total + item.product.price * item.quantity, 0)}
+        discountAmount={getDiscountAmount()}
         paymentMethods={paymentMethods}
+        isNewCustomerOfferActive={isNewCustomerOfferActive}
         t={t} />
 
 
@@ -918,13 +1107,27 @@ export default function Store() {
         onAddToCart={handleAddToCart}
         language={language}
         deliveryMethod={selectedProduct ? deliveryMethods.find((m) => m.id === selectedProduct.delivery_method_id) : null}
-        darkMode={darkMode} // Passa o tema como prop
+        darkMode={darkMode}
+        isNewCustomerOfferActive={isNewCustomerOfferActive}
         />
 
       <CustomerMessagesModal
         isOpen={showCustomerMessages}
         onClose={() => setShowCustomerMessages(false)}
         onUpdateCount={setUnreadMessagesCount}
+      />
+
+      {/* NOVO MODAL DE OFERTA */}
+      <NewCustomerOfferModal
+        isOpen={showNewCustomerOffer}
+        onClose={() => {
+          setShowNewCustomerOffer(false);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('newCustomerOfferShown', 'true');
+          }
+        }}
+        onActivate={handleActivateOffer}
+        timeLeft={offerTimeLeft}
       />
 
       <Footer settings={settings} />
@@ -960,7 +1163,7 @@ export default function Store() {
 }
 
 // Componente CourseCard (similar ao ProductCard)
-function CourseCard({ course, onEnroll, language = 'pt', darkMode }) { // Recebe darkMode
+function CourseCard({ course, onEnroll, language = 'pt', darkMode }) {
 
   const hasDiscount = course.original_price && course.original_price > course.price;
   const discountPercentage = hasDiscount ?

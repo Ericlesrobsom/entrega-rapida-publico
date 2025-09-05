@@ -1,10 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Trash2, Minus, Plus } from "lucide-react";
+import { X, Trash2, Minus, Plus, Gift } from "lucide-react";
 
-export default function ShoppingCartSheet({ isOpen, onClose, cartItems, onUpdateItem, onRemoveItem, onClearCart, onCheckout, calculateTotal, language, t }) {
+export default function ShoppingCartSheet({ 
+  isOpen, 
+  onClose, 
+  cartItems, 
+  onUpdateItem, 
+  onRemoveItem, 
+  onClearCart, 
+  onCheckout, 
+  calculateTotal, 
+  originalTotal, 
+  discountAmount, 
+  isNewCustomerOfferActive, 
+  language, 
+  t 
+}) {
   const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
@@ -51,9 +66,17 @@ export default function ShoppingCartSheet({ isOpen, onClose, cartItems, onUpdate
                 }`}>
                   <img src={item.product.image_url} alt={item.product.name} className="w-20 h-20 object-cover rounded-md" />
                   <div className="flex-1">
-                    <p className={`font-semibold line-clamp-2 ${
-                      darkMode ? 'text-gray-200' : 'text-slate-800'
-                    }`}>{item.product.name}</p>
+                    <div className="flex items-start justify-between">
+                      <p className={`font-semibold line-clamp-2 ${
+                        darkMode ? 'text-gray-200' : 'text-slate-800'
+                      }`}>{item.product.name}</p>
+                      {/* INDICADOR DE DESCONTO NO PRIMEIRO ITEM */}
+                      {index === 0 && isNewCustomerOfferActive && (
+                        <Badge className="bg-green-500 text-white text-xs ml-2">
+                          -20% OFF
+                        </Badge>
+                      )}
+                    </div>
                     <p className={`text-sm ${
                       darkMode ? 'text-gray-400' : 'text-slate-500'
                     }`}>R$ {item.product.price.toFixed(2).replace('.', ',')}</p>
@@ -63,7 +86,7 @@ export default function ShoppingCartSheet({ isOpen, onClose, cartItems, onUpdate
                       </Button>
                       <span className="w-8 text-center">{item.quantity}</span>
                       <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onUpdateItem(item.product.id, item.quantity + 1)}>
-                        <Plus className="h-3 w-3" />
+                        <Plus className="h-3 h-3" />
                       </Button>
                     </div>
                   </div>
@@ -85,12 +108,31 @@ export default function ShoppingCartSheet({ isOpen, onClose, cartItems, onUpdate
               : 'border-slate-200 bg-slate-50/80'
           }`}>
             <div className="w-full space-y-4">
-              <div className="flex justify-between items-center">
-                <span className={darkMode ? 'text-gray-300' : 'text-slate-600'}>{t.total}:</span>
-                <span className="font-semibold text-xl text-[--store-primary]">
-                  R$ {calculateTotal.toFixed(2).replace('.', ',')}
-                </span>
+              <div className="space-y-2">
+                {isNewCustomerOfferActive && discountAmount > 0 && (
+                  <>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className={darkMode ? 'text-gray-300' : 'text-slate-600'}>Subtotal:</span>
+                      <span className={`line-through ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>
+                        R$ {originalTotal.toFixed(2).replace('.', ',')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-green-500 font-medium">
+                      <span><Gift className="w-4 h-4 inline mr-1" /> Desconto no 1º produto:</span>
+                      <span>-R$ {discountAmount.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                  </>
+                )}
+                <div className="flex justify-between items-center">
+                  <span className={darkMode ? 'text-gray-300' : 'text-slate-600'}>
+                    {isNewCustomerOfferActive && discountAmount > 0 ? "Total com Desconto:" : `${t.total}:`}
+                  </span>
+                  <span className="font-semibold text-xl text-[--store-primary]">
+                    R$ {calculateTotal.toFixed(2).replace('.', ',')}
+                  </span>
+                </div>
               </div>
+
               <Button 
                 onClick={onCheckout} 
                 className="w-full text-white bg-[--store-primary] hover:opacity-90 transition-opacity shadow-lg"

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardFooter, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Package, Star, Truck, Mail, Eye, MessageCircle } from "lucide-react";
+import { ShoppingCart, Package, Star, Truck, Mail, Eye, MessageCircle, Gift } from "lucide-react"; // Added Gift icon
 
 const translations = {
   pt: {
@@ -73,17 +73,35 @@ export default function ProductCard({
   language = 'pt',
   deliveryMethod,
   isGridView,
-  darkMode
+  darkMode,
+  isNewCustomerOfferActive, // Nova prop
+  isFirstInCart // Nova prop para saber se será o primeiro produto no carrinho
 }) {
   const t = (key) => translations[language][key] || key;
 
   const isOutOfStock = product.stock_quantity !== null && product.stock_quantity <= 0;
   const hasStock = product.stock_quantity !== null && product.stock_quantity !== undefined;
 
-  const hasDiscount = product.original_price && product.original_price > product.price;
-  const discountPercentage = hasDiscount ?
+  // Lógica para badge de oferta de novo cliente (mantém a verificação de isFirstInCart)
+  const shouldShowDiscount = isNewCustomerOfferActive && (isFirstInCart || isFirstInCart === undefined);
+
+  // Lógica para desconto original do produto
+  const hasOriginalDiscount = product.original_price && product.original_price > product.price;
+  const discountPercentage = hasOriginalDiscount ?
     Math.round(((product.original_price - product.price) / product.original_price) * 100) :
     (product.discount_percentage || 0);
+
+  // APLICAÇÃO DO DESCONTO DE NOVO CLIENTE NA EXIBIÇÃO DO PREÇO FINAL (conforme outline)
+  // priceToUse é o preço base para calcular o finalPrice
+  const priceToUse = hasOriginalDiscount ? product.price : (product.original_price || product.price);
+  // finalPrice é o preço que será exibido, aplicando o desconto de novo cliente se a oferta estiver ativa
+  const finalPrice = isNewCustomerOfferActive ? priceToUse * 0.8 : priceToUse;
+
+  // LÓGICA DE CORES DO PREÇO
+  const hasAnyDiscount = hasOriginalDiscount || isNewCustomerOfferActive;
+  const priceColorClass = hasAnyDiscount
+    ? 'text-red-600' // Vermelho quando há desconto
+    : (darkMode ? 'text-white' : 'text-gray-900'); // Branco/normal quando não há desconto
 
   // Adiciona a classe de brilho se o produto for verificado
   const cardClasses = `
@@ -111,8 +129,14 @@ export default function ProductCard({
 
           {/* Badges no topo da imagem */}
           <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
-            {/* Badge de Desconto */}
-            {discountPercentage > 0 && (
+            {/* BADGE DE OFERTA NOVO CLIENTE - Só mostra se for elegível */}
+            {shouldShowDiscount && (
+              <Badge className="bg-green-500 text-white font-bold text-xs px-2 py-1 flex items-center gap-1 animate-pulse">
+                <Gift className="w-3 h-3" /> -20% OFF
+              </Badge>
+            )}
+            {/* Badge de Desconto (apenas se a oferta de novo cliente não estiver ativa) */}
+            {discountPercentage > 0 && !shouldShowDiscount && (
               <Badge className="bg-red-500 text-white font-bold text-xs px-2 py-1">
                 -{discountPercentage}% OFF
               </Badge>
@@ -221,25 +245,21 @@ export default function ProductCard({
             : 'bg-white/50 border-slate-100'
         }`}>
           <div className="w-full space-y-3">
-            {/* Preços */}
+            {/* Preços - Updated according to outline */}
             <div className="text-center">
-              {hasDiscount ? (
-                <div className="space-y-1">
-                  <p className={`text-sm line-through ${
-                    darkMode ? 'text-gray-400' : 'text-slate-500'
-                  }`}>
-                    R$ {product.original_price.toFixed(2).replace('.', ',')}
-                  </p>
-                  <p className="text-xl font-bold text-red-600">
-                    R$ {product.price.toFixed(2).replace('.', ',')}
-                  </p>
-                </div>
-              ) : (
-                <p className={`text-xl font-bold ${
-                  darkMode ? 'text-white' : 'text-slate-900'
-                }`} style={{ color: darkMode ? '#fff' : 'var(--store-primary)' }}>
-                  R$ {product.price.toFixed(2).replace('.', ',')}
+              {hasOriginalDiscount && (
+                <p className={`text-sm line-through ${darkMode ? 'text-gray-500' : 'text-slate-400'}`}>
+                  R$ {product.original_price?.toFixed(2).replace('.', ',')}
                 </p>
+              )}
+              <p className={`text-2xl font-bold ${priceColorClass}`}>
+                R$ {finalPrice.toFixed(2).replace('.', ',')}
+              </p>
+              {/* MOSTRAR DESCONTO DE BOAS-VINDAS */}
+              {isNewCustomerOfferActive && (
+                 <p className="text-sm font-semibold text-green-500 mt-1">
+                    Desconto de boas-vindas! -20%
+                 </p>
               )}
             </div>
 

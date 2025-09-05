@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Package, Star, Truck, Mail, X, MessageCircle, Loader2, Ticket } from "lucide-react";
+import { ShoppingCart, Package, Star, Truck, Mail, X, MessageCircle, Loader2, Ticket, Gift } from "lucide-react";
 import { motion } from "framer-motion";
 import ProductQuestions from "./ProductQuestions";
 import ProductReviews from "./ProductReviews";
@@ -50,7 +50,7 @@ const StarRating = ({ rating, reviewsCount, language = 'pt' }) => {
   );
 };
 
-export default function ProductDetailsModal({ product, isOpen, onClose, onAddToCart, language = 'pt', deliveryMethod, darkMode }) {
+export default function ProductDetailsModal({ product, isOpen, onClose, onAddToCart, language = 'pt', deliveryMethod, darkMode, isNewCustomerOfferActive }) {
   const t = (key) => translations[language][key] || key;
   const [selectedImage, setSelectedImage] = useState(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -58,22 +58,25 @@ export default function ProductDetailsModal({ product, isOpen, onClose, onAddToC
   // States for coupon functionality
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null);
-  const [finalPrice, setFinalPrice] = useState(product?.price || 0);
+  const [finalPrice, setFinalPrice] = useState(product?.price || 0); // This state will hold the final displayed price
   const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
   const [couponError, setCouponError] = useState("");
 
   useEffect(() => {
     if (product && isOpen) {
       setSelectedImage(product.image_url);
-      setFinalPrice(product.price); // Reset final price to original product price
+      // Aplicar desconto de novo cliente se estiver ativo ao abrir o modal
+      const currentPrice = isNewCustomerOfferActive ? product.price * 0.8 : product.price;
+      setFinalPrice(currentPrice);
       setCouponCode(""); // Clear coupon code
       setAppliedCoupon(null); // Clear applied coupon
       setCouponError(""); // Clear any coupon error
     } else if (product) {
-      // If modal is closing or product changes but modal isn't open, ensure finalPrice is set
-      setFinalPrice(product.price);
+      // If product changes or modal is closed, ensure finalPrice is set based on new customer offer
+      const currentPrice = isNewCustomerOfferActive ? product.price * 0.8 : product.price;
+      setFinalPrice(currentPrice);
     }
-  }, [product, isOpen]);
+  }, [product, isOpen, isNewCustomerOfferActive]);
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
@@ -91,7 +94,7 @@ export default function ProductDetailsModal({ product, isOpen, onClose, onAddToC
 
       if (coupon && coupon.current_uses < coupon.max_uses && (!coupon.expires_at || new Date(coupon.expires_at) > new Date())) {
         const discountAmount = (product.price * coupon.discount_percentage) / 100;
-        setFinalPrice(product.price - discountAmount);
+        setFinalPrice(product.price - discountAmount); // Update finalPrice state with coupon discount
         setAppliedCoupon(coupon);
         toast.success(`Cupom "${coupon.code}" aplicado!`);
       } else {
@@ -109,7 +112,9 @@ export default function ProductDetailsModal({ product, isOpen, onClose, onAddToC
   const handleRemoveCoupon = () => {
     setCouponCode("");
     setAppliedCoupon(null);
-    setFinalPrice(product.price);
+    // When removing a coupon, revert finalPrice to the base price or new customer offer price
+    const priceAfterRemoval = isNewCustomerOfferActive ? product.price * 0.8 : product.price;
+    setFinalPrice(priceAfterRemoval);
     setCouponError("");
     toast.info("Cupom removido.");
   };
@@ -118,6 +123,22 @@ export default function ProductDetailsModal({ product, isOpen, onClose, onAddToC
 
   const currentImage = selectedImage || product.image_url || 'https://via.placeholder.com/500x400?text=Sem+Imagem';
   const totalImages = (product.image_url ? 1 : 0) + (product.additional_images ? product.additional_images.length : 0);
+
+  // Determine if there's an original price to display struck through
+  const hasOriginalPrice = product.original_price && product.original_price > product.price;
+
+  // LÓGICA DE CORES DO PREÇO NO MODAL
+  const hasAnyDiscount = hasOriginalPrice || isNewCustomerOfferActive;
+  const hasCouponApplied = appliedCoupon !== null;
+  
+  let priceColorClass;
+  if (hasCouponApplied) {
+    priceColorClass = 'text-orange-500'; // Laranja quando cupom aplicado
+  } else if (hasAnyDiscount) {
+    priceColorClass = 'text-red-600'; // Vermelho quando há desconto (original_price ou newCustomerOffer)
+  } else {
+    priceColorClass = darkMode ? 'text-white' : 'text-gray-900'; // Branco/normal sem desconto
+  }
 
   const handleClose = () => {
     setSelectedImage(null);
@@ -278,57 +299,68 @@ export default function ProductDetailsModal({ product, isOpen, onClose, onAddToC
               </div>
 
               {/* Seção de Preço e Cupom */}
-              <div className={`p-4 rounded-lg space-y-3 border-2 ${appliedCoupon ? 'border-green-400' : (darkMode ? 'border-gray-700' : 'border-gray-200')}`}>
+              <div className={`p-4 rounded-lg space-y-3 border-2 ${appliedCoupon || isNewCustomerOfferActive ? 'border-green-400' : (darkMode ? 'border-gray-700' : 'border-gray-200')}`}>
                 <h3 className={`font-semibold text-lg ${darkMode ? 'text-white' : 'text-slate-900'}`}>Preço e Descontos</h3>
-                {appliedCoupon ? (
-                  <div className="text-center space-y-1">
-                    <p className={`text-lg line-through ${darkMode ? 'text-gray-500' : 'text-slate-400'}`}>
-                      R$ {product.price.toFixed(2).replace('.', ',')}
-                    </p>
-                    <p className="text-3xl font-bold text-green-500">
-                      R$ {finalPrice.toFixed(2).replace('.', ',')}
-                    </p>
-                    <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                      -{appliedCoupon.discount_percentage}% com cupom {appliedCoupon.code}
-                    </Badge>
-                  </div>
-                ) : (
-                  <p className={`text-3xl font-bold text-center ${darkMode ? 'text-white' : 'text-slate-800'}`}>
-                    R$ {product.price.toFixed(2).replace('.', ',')}
+                
+                {hasOriginalPrice && (
+                  <p className={`text-lg line-through text-center ${darkMode ? 'text-gray-500' : 'text-slate-400'}`}>
+                    Preço Original: R$ {product.original_price?.toFixed(2).replace('.', ',')}
                   </p>
+                )}
+                <p className={`text-3xl font-bold text-center ${priceColorClass}`}>
+                  R$ {finalPrice.toFixed(2).replace('.', ',')}
+                </p>
+
+                {isNewCustomerOfferActive && !appliedCoupon && (
+                  <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 mx-auto">
+                    <Gift className="w-3 h-3 mr-1" /> Desconto de boas-vindas! -20%
+                  </Badge>
+                )}
+                {appliedCoupon && !isNewCustomerOfferActive && (
+                  <Badge variant="secondary" className="bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 mx-auto">
+                    -{appliedCoupon.discount_percentage}% com cupom {appliedCoupon.code}
+                  </Badge>
                 )}
 
                 <div className={`space-y-2 pt-3 border-t ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-                  <Label htmlFor="coupon-modal" className="flex items-center gap-2 text-orange-500 font-semibold">
-                    <Ticket className="w-5 h-5"/>
-                    Tem um cupom?
-                  </Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="coupon-modal"
-                      placeholder="Digite seu cupom"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      disabled={!!appliedCoupon || isCheckingCoupon}
-                      className={darkMode ? 'bg-gray-700 text-white placeholder:text-gray-400 border-gray-600 focus-visible:ring-orange-500' : 'bg-white text-gray-900 border-gray-300 focus-visible:ring-orange-500'}
-                    />
-                    {appliedCoupon ? (
-                      <Button variant="destructive" onClick={handleRemoveCoupon}>Remover</Button>
-                    ) : (
-                      <Button 
-                        onClick={handleApplyCoupon} 
-                        disabled={isCheckingCoupon || !couponCode.trim()}
-                        className="bg-orange-500 hover:bg-orange-600 text-white border border-orange-500"
-                        style={{
-                          borderColor: '#f97316',
-                          backgroundColor: '#f97316'
-                        }}
-                      >
-                        {isCheckingCoupon ? <Loader2 className="w-4 h-4 animate-spin"/> : 'Aplicar'}
-                      </Button>
-                    )}
-                  </div>
-                  {couponError && <p className="text-xs text-red-500">{couponError}</p>}
+                  {isNewCustomerOfferActive ? (
+                     <div className="text-sm text-center p-2 rounded-md bg-green-50 dark:bg-green-900/50 text-green-700 dark:text-green-300">
+                       Você ativou o desconto de 20% para novos clientes!
+                    </div>
+                  ) : (
+                    <>
+                      <Label htmlFor="coupon-modal" className="flex items-center gap-2 text-orange-500 font-semibold">
+                        <Ticket className="w-5 h-5"/>
+                        Tem um cupom?
+                      </Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="coupon-modal"
+                          placeholder="Digite seu cupom"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                          disabled={!!appliedCoupon || isCheckingCoupon}
+                          className={darkMode ? 'bg-gray-700 text-white placeholder:text-gray-400 border-gray-600 focus-visible:ring-orange-500' : 'bg-white text-gray-900 border-gray-300 focus-visible:ring-orange-500'}
+                        />
+                        {appliedCoupon ? (
+                          <Button variant="destructive" onClick={handleRemoveCoupon}>Remover</Button>
+                        ) : (
+                          <Button 
+                            onClick={handleApplyCoupon} 
+                            disabled={isCheckingCoupon || !couponCode.trim()}
+                            className="bg-orange-500 hover:bg-orange-600 text-white border border-orange-500"
+                            style={{
+                              borderColor: '#f97316',
+                              backgroundColor: '#f97316'
+                            }}
+                          >
+                            {isCheckingCoupon ? <Loader2 className="w-4 h-4 animate-spin"/> : 'Aplicar'}
+                          </Button>
+                        )}
+                      </div>
+                      {couponError && <p className="text-xs text-red-500">{couponError}</p>}
+                    </>
+                  )}
                 </div>
               </div>
 
