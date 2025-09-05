@@ -33,11 +33,65 @@ export default function DynamicStyles({ settings }) {
       const styleTag = document.createElement('style');
       styleTag.id = 'dynamic-store-styles';
       styleTag.innerHTML = `
+        .verified-product-glow {
+          position: relative;
+          overflow: hidden; /* Garante que a linha animada fique dentro do card */
+          border-radius: 0.75rem; /* Correspondente ao rounded-lg do Card */
+        }
+
+        .verified-product-glow::before {
+          content: '';
+          position: absolute;
+          width: 150%;
+          height: 150%;
+          background: conic-gradient(
+            transparent,
+            transparent,
+            transparent,
+            var(--store-primary, #f97316) /* Cor laranja do botão */
+          );
+          animation: rotate-border 4s linear infinite;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          z-index: 1; /* Fica acima do conteúdo, mas o card tem z-index maior */
+        }
+        
+        .verified-product-glow::after {
+          content: '';
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          right: 2px;
+          bottom: 2px;
+          background: var(--card-bg, #ffffff); /* Usa uma variável para o fundo do card */
+          border-radius: 0.65rem; /* Um pouco menor para criar a borda */
+          z-index: 2; /* Cobre a animação, revelando só a borda */
+        }
+
+        .dark .verified-product-glow::after {
+          background: var(--card-bg-dark, #1f2937); /* Cor do card no modo escuro */
+        }
+        
+        /* A animação */
+        @keyframes rotate-border {
+          0% { transform: translate(-50%, -50%) rotate(0deg); }
+          100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Isso garante que o conteúdo do card apareça acima da borda animada */
+        .verified-product-glow > * {
+          position: relative;
+          z-index: 3;
+        }
+
         :root {
-          --store-primary: ${settings.store_primary_color || '#2563eb'};
+          --store-primary: ${settings.store_primary_color || '#f97316'}; /* Laranja como padrão */
           --store-secondary: ${settings.store_secondary_color || '#4f46e5'};
           --desktop-font-size: ${desktopFontSize};
           --mobile-font-size: ${mobileFontSize};
+          --card-bg: #ffffff; /* Cor de fundo padrão do card */
+          --card-bg-dark: rgb(17 24 39 / 0.9); /* Cor de fundo do card escuro */
         }
         
         /* Aplicar tamanho de fonte para desktop (padrão) */

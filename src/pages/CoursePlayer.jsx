@@ -4,7 +4,7 @@ import { Course } from "@/api/entities";
 import { CourseModule } from "@/api/entities";
 import { CourseLesson } from "@/api/entities";
 import { CourseAccess } from "@/api/entities";
-import { Settings } from "@/api/entities"; // Importar Settings
+import { Settings } from "@/api/entities";
 import { User } from "@/api/entities";
 import { createPageUrl } from "@/utils";
 import { useNavigate, Link } from "react-router-dom";
@@ -14,154 +14,222 @@ import { toast, Toaster } from 'sonner';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
+// UniversalVideoPlayer Component (defined within the same file for simplicity)
+const UniversalVideoPlayer = ({ videoUrl, googleDriveId, title, onProgress, onComplete, settings, courseId, setLoadingVideo }) => {
+  const [isLoadingVideo, setIsLoadingVideo] = useState(true);
+
+  useEffect(() => {
+    setIsLoadingVideo(true); // Reset loading state when video changes
+    setLoadingVideo(true); // Propagate loading state up
+  }, [videoUrl, googleDriveId, setLoadingVideo]);
+
+  const getGoogleDriveEmbedUrl = (id) => {
+    return id ? `https://drive.google.com/file/d/${id}/preview` : null;
+  };
+
+  // Prioritize googleDriveId if available, otherwise use videoUrl directly
+  const embedUrl = googleDriveId ? getGoogleDriveEmbedUrl(googleDriveId) : videoUrl;
+
+  const handleIframeLoad = () => {
+    setIsLoadingVideo(false);
+    setLoadingVideo(false); // Propagate loading state up
+    // In a real application, you might start listening to video events here
+    // if using a sophisticated player API (e.g., YouTube IFrame API)
+  };
+
+  // Placeholder functions for video events (Google Drive iframes don't offer direct API for this)
+  const handlePlayerProgress = (event) => {
+    // This would typically receive progress data (e.g., current time, duration)
+    if (onProgress) onProgress(event);
+  };
+
+  const handlePlayerComplete = () => {
+    // This would be triggered when the video reaches its end
+    if (onComplete) onComplete();
+  };
+
+  return (
+    <div className="aspect-video bg-black rounded-xl shadow-2xl overflow-hidden relative">
+      {settings?.store_logo_url && (
+        <img 
+          src={settings.store_logo_url}
+          alt="Logo da Loja"
+          className="absolute top-4 right-4 z-20 h-8 md:h-10 w-auto opacity-80"
+        />
+      )}
+      {isLoadingVideo && (
+          <div className="w-full h-full flex items-center justify-center text-white">
+              <Loader2 className="w-8 h-8 animate-spin" />
+          </div>
+      )}
+      {embedUrl ? (
+          <iframe
+            key={embedUrl}
+            src={embedUrl}
+            frameBorder="0"
+            allow="autoplay; fullscreen; picture-in-picture"
+            allowFullScreen
+            className="w-full h-full"
+            title={title || 'Player de Vídeo'}
+            onLoad={handleIframeLoad}
+            // For actual progress/complete, a more advanced player integration is needed (e.g., YouTube API)
+          ></iframe>
+      ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center text-white p-8 text-center">
+            <PlayCircle className="w-16 h-16 mb-4 opacity-50"/>
+            <h3 className="text-xl font-semibold">Nenhum vídeo disponível</h3>
+            <p className="text-gray-300">Selecione uma aula com vídeo ou verifique a URL do vídeo.</p>
+          </div>
+      )}
+    </div>
+  );
+};
+
+
 export default function CoursePlayer() {
   const [course, setCourse] = useState(null);
   const [modules, setModules] = useState([]);
-  const [activeLesson, setActiveLesson] = useState(null);
-  const [courseAccess, setCourseAccess] = useState(null);
+  const [lessons, setLessons] = useState([]); // New state for all lessons flat
+  const [currentLesson, setCurrentLesson] = useState(null); // Renamed from activeLesson
+  const [access, setAccess] = useState(null); // Renamed from courseAccess
   const [completedLessons, setCompletedLessons] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [loadingVideo, setLoadingVideo] = useState(false);
   const [totalLessonsCount, setTotalLessonsCount] = useState(0);
-  const [settings, setSettings] = useState(null); // Estado para as configurações
+  const [settings, setSettings] = useState(null);
   const [darkMode, setDarkMode] = useState(false);
   const [showLessonList, setShowLessonList] = useState(true);
+  const [error, setError] = useState(null); // New state for error messages
   const navigate = useNavigate();
 
   const courseId = new URLSearchParams(window.location.search).get('id');
 
-  // Carregar preferências do usuário ao inicializar
+  // Load user preferences on initialization
   useEffect(() => {
-    // Carregar modo escuro
     const savedDarkMode = localStorage.getItem('coursePlayer-darkMode');
     if (savedDarkMode) {
       setDarkMode(JSON.parse(savedDarkMode));
     }
 
-    // Carregar preferência de mostrar/ocultar lista de aulas
     const savedShowLessonList = localStorage.getItem('coursePlayer-showLessonList');
     if (savedShowLessonList) {
       setShowLessonList(JSON.parse(savedShowLessonList));
     }
   }, []);
 
-  // Alternar modo escuro
   const toggleDarkMode = () => {
     const newDarkMode = !darkMode;
     setDarkMode(newDarkMode);
     localStorage.setItem('coursePlayer-darkMode', JSON.stringify(newDarkMode));
   };
 
-  // Alternar visibilidade da lista de aulas
   const toggleLessonList = () => {
     const newShowLessonList = !showLessonList;
     setShowLessonList(newShowLessonList);
     localStorage.setItem('coursePlayer-showLessonList', JSON.stringify(newShowLessonList));
   };
 
-  const loadCourseData = useCallback(async (id, initialCompletedLessons) => {
-    try {
-      const [courseData, modulesData, lessonsData, settingsData] = await Promise.all([
-        Course.filter({ id: id }),
-        CourseModule.filter({ course_id: id }, 'sort_order'),
-        CourseLesson.filter({ course_id: id }, 'sort_order'),
-        Settings.list() // Buscar configurações da loja
-      ]);
-
-      setCourse(courseData[0]);
-      if (settingsData && settingsData.length > 0) {
-        setSettings(settingsData[0]); // Salvar configurações no estado
+  // Comprehensive data loading and access checking
+  useEffect(() => {
+    const loadCourseData = async () => {
+      if (!courseId) {
+        navigate(createPageUrl("Store"));
+        return;
       }
-      setTotalLessonsCount(lessonsData.length);
+      setLoading(true);
+      setError(null); // Clear any previous errors
 
-      const processedModules = modulesData.map(mod => ({
-        ...mod,
-        lessons: lessonsData
-          .filter(lesson => lesson.module_id === mod.id)
-          .sort((a, b) => a.sort_order - b.sort_order)
-      })).sort((a, b) => a.sort_order - b.sort_order);
-      setModules(processedModules);
+      try {
+        const user = await User.me();
+        if (!user) {
+          await User.loginWithRedirect(window.location.href);
+          return;
+        }
 
-      let firstLesson = null;
-      let nextUnwatchedLesson = null;
+        const [courseData, modulesData, lessonsData, accessRecords, settingsData] = await Promise.all([
+          Course.filter({ id: courseId }),
+          CourseModule.filter({ course_id: courseId }, 'sort_order'),
+          CourseLesson.filter({ course_id: courseId }, 'sort_order'),
+          CourseAccess.filter({ course_id: courseId, student_email: user.email, is_active: true }),
+          Settings.list()
+        ]);
 
-      for (const mod of processedModules) {
-        if (mod.lessons.length > 0) {
-          if (!firstLesson) {
-            firstLesson = mod.lessons[0];
-          }
-          const unwatched = mod.lessons.find(lesson => !initialCompletedLessons.has(lesson.id));
-          if (unwatched) {
-            nextUnwatchedLesson = unwatched;
-            break;
+        if (!courseData || courseData.length === 0) {
+          setError('Curso não encontrado.');
+          setHasAccess(false);
+          setLoading(false);
+          return;
+        }
+
+        if (!accessRecords || accessRecords.length === 0) {
+          setError('Você não tem acesso a este curso. Verifique se já adquiriu o curso.');
+          setHasAccess(false);
+          setLoading(false);
+          return;
+        }
+
+        const courseRecord = courseData[0];
+        const accessRecord = accessRecords[0];
+        const initialCompletedLessonsSet = new Set(accessRecord.completed_lessons || []);
+
+        setCourse(courseRecord);
+        setAccess(accessRecord);
+        setCompletedLessons(initialCompletedLessonsSet);
+        setHasAccess(true);
+        setLessons(lessonsData); // Set flat list of all lessons
+
+        setSettings(settingsData.length > 0 ? settingsData[0] : null); // Keep null if no settings
+        setTotalLessonsCount(lessonsData.length);
+
+        const processedModules = modulesData.map(mod => ({
+          ...mod,
+          lessons: lessonsData
+            .filter(lesson => lesson.module_id === mod.id)
+            .sort((a, b) => a.sort_order - b.sort_order)
+        })).sort((a, b) => a.sort_order - b.sort_order);
+        setModules(processedModules);
+
+        let firstLesson = null;
+        let nextUnwatchedLesson = null;
+
+        for (const mod of processedModules) {
+          if (mod.lessons.length > 0) {
+            if (!firstLesson) {
+              firstLesson = mod.lessons[0];
+            }
+            const unwatched = mod.lessons.find(lesson => !initialCompletedLessonsSet.has(lesson.id));
+            if (unwatched) {
+              nextUnwatchedLesson = unwatched;
+              break;
+            }
           }
         }
-      }
-      
-      const newActiveLesson = nextUnwatchedLesson || firstLesson || null;
-      setActiveLesson(newActiveLesson);
-      if (newActiveLesson) setLoadingVideo(true);
+        
+        const newCurrentLesson = nextUnwatchedLesson || firstLesson || null;
+        setCurrentLesson(newCurrentLesson);
+        if (newCurrentLesson) setLoadingVideo(true);
 
-    } catch (error) {
-      console.error("Erro ao carregar dados do curso:", error);
-      toast.error('Erro ao carregar dados do curso.');
-    }
-  }, []);
-
-  const checkAccess = useCallback(async (courseIdToCheck) => {
-    if (!courseIdToCheck) {
-      navigate(createPageUrl("Store"));
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const user = await User.me();
-      if (!user) {
-        await User.loginWithRedirect(window.location.href);
-        return;
-      }
-
-      const accessRecords = await CourseAccess.filter({
-        course_id: courseIdToCheck,
-        student_email: user.email,
-        is_active: true
-      });
-
-      if (accessRecords.length === 0) {
+      } catch (err) {
+        console.error("Erro ao carregar dados do curso:", err);
+        toast.error("Erro ao carregar dados do curso.");
+        setError('Não foi possível carregar o curso.');
         setHasAccess(false);
+      } finally {
         setLoading(false);
-        return;
       }
+    };
 
-      const access = accessRecords[0];
-      setCourseAccess(access);
-      const initialCompletedLessonsSet = new Set(access.completed_lessons || []);
-      setCompletedLessons(initialCompletedLessonsSet);
-      setHasAccess(true);
-
-      await loadCourseData(courseIdToCheck, initialCompletedLessonsSet);
-    } catch (error) {
-      console.error("Erro ao verificar acesso:", error);
-      toast.error("Erro ao verificar acesso ao curso.");
-      setHasAccess(false);
-    } finally {
-      setLoading(false);
-    }
-  }, [navigate, loadCourseData]);
-
-  useEffect(() => {
-    checkAccess(courseId);
-  }, [courseId, checkAccess]);
+    loadCourseData();
+  }, [courseId, navigate]); // Removed checkAccess from dependencies
 
   const handleLessonClick = useCallback((lesson) => {
     setLoadingVideo(true);
-    setActiveLesson(lesson);
+    setCurrentLesson(lesson);
   }, []);
 
   const handleToggleProgress = useCallback(async (lessonId) => {
-    if (!courseAccess) return;
+    if (!access) return; // Use 'access' state
 
     try {
       const updatedCompletedLessons = new Set(completedLessons);
@@ -178,7 +246,7 @@ export default function CoursePlayer() {
       const completedLessonsArray = Array.from(updatedCompletedLessons);
       const progress = totalLessonsCount > 0 ? Math.round((completedLessonsArray.length / totalLessonsCount) * 100) : 0;
 
-      await CourseAccess.update(courseAccess.id, {
+      await CourseAccess.update(access.id, { // Use 'access.id'
         completed_lessons: completedLessonsArray,
         progress: progress
       });
@@ -190,16 +258,75 @@ export default function CoursePlayer() {
         toast.success("Parabéns! Você concluiu o curso! 🎊");
       }
 
-    } catch (error) {
-      console.error("Erro ao salvar progresso:", error);
+    } catch (err) {
+      console.error("Erro ao salvar progresso:", err);
       toast.error("Erro ao salvar progresso.");
     }
-  }, [courseAccess, completedLessons, totalLessonsCount]);
+  }, [access, completedLessons, totalLessonsCount]); // Dependencies updated
 
-  if (loading || !course) {
+  const handleProgress = useCallback((progress) => {
+    // This function can be used to track video progress (e.g., if using a YouTube API player)
+    // console.log("Video progress:", progress);
+  }, []);
+
+  const handleLessonComplete = useCallback(() => {
+    // This function can be triggered when the video finishes playing
+    console.log("Video completed.");
+    // Optionally, automatically mark the current lesson as complete
+    // if (currentLesson && !completedLessons.has(currentLesson.id)) {
+    //   handleToggleProgress(currentLesson.id);
+    // }
+  }, []); // Add dependencies if uncommenting auto-complete logic
+
+  const renderVideoPlayer = () => {
+    if (!currentLesson) {
+      return (
+        <div className="aspect-video bg-black rounded-xl shadow-2xl overflow-hidden relative">
+            {settings?.store_logo_url && (
+                <img 
+                  src={settings.store_logo_url}
+                  alt="Logo da Loja"
+                  className="absolute top-4 right-4 z-20 h-8 md:h-10 w-auto opacity-80"
+                />
+            )}
+            <div className="w-full h-full flex flex-col items-center justify-center text-white p-8 text-center">
+              <PlayCircle className="w-16 h-16 mb-4 opacity-50"/>
+              <h3 className="text-xl font-semibold">Bem-vindo ao curso!</h3>
+              <p className="text-gray-300">Selecione uma aula na lista para começar a assistir.</p>
+            </div>
+        </div>
+      );
+    }
+
+    return (
+      <UniversalVideoPlayer
+        videoUrl={currentLesson.video_url}
+        googleDriveId={currentLesson.google_drive_video_id} // New field for Google Drive ID
+        courseId={course?.id}
+        title={currentLesson.title}
+        settings={settings}
+        onProgress={handleProgress}
+        onComplete={handleLessonComplete}
+        setLoadingVideo={setLoadingVideo} // Pass setState function to child
+      />
+    );
+  };
+
+  if (loading) {
     return (
       <div className={`flex items-center justify-center min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-slate-100'}`}>
         <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={`flex flex-col items-center justify-center min-h-screen text-center p-4 ${darkMode ? 'bg-gray-900 text-white' : 'bg-slate-100 text-gray-800'}`}>
+        <Lock className="w-16 h-16 text-red-500 mb-4" />
+        <h1 className="text-3xl font-bold">Erro de Acesso ou Carregamento</h1>
+        <p className={`mt-2 ${darkMode ? 'text-gray-300' : 'text-slate-600'}`}>{error}</p>
+        <Button onClick={() => navigate(createPageUrl("Store"))} className="mt-6">Voltar para a Loja</Button>
       </div>
     );
   }
@@ -214,14 +341,7 @@ export default function CoursePlayer() {
       </div>
     );
   }
-
-  const getGoogleDriveVideoId = (url) => {
-    if (!url) return null;
-    const match = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
-    return match ? match[1] : null;
-  };
   
-  const videoId = getGoogleDriveVideoId(activeLesson?.video_url);
   const progressPercentage = totalLessonsCount > 0 ? Math.round((completedLessons.size / totalLessonsCount) * 100) : 0;
 
   return (
@@ -287,18 +407,18 @@ export default function CoursePlayer() {
                   {showLessonList ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </Button>
 
-                {activeLesson && (
+                {currentLesson && (
                     <Button
-                      onClick={() => handleToggleProgress(activeLesson.id)}
-                      variant={completedLessons.has(activeLesson.id) ? "default" : "outline"}
+                      onClick={() => handleToggleProgress(currentLesson.id)}
+                      variant={completedLessons.has(currentLesson.id) ? "default" : "outline"}
                       className={`transition-all ${
-                        completedLessons.has(activeLesson.id) 
+                        completedLessons.has(currentLesson.id) 
                           ? "bg-green-600 hover:bg-green-700" 
                           : "text-green-600 border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20"
                       }`}
                     >
                       <CheckCircle className="w-4 h-4 mr-2" />
-                      {completedLessons.has(activeLesson.id) ? "Concluída" : "Marcar"}
+                      {completedLessons.has(currentLesson.id) ? "Concluída" : "Marcar"}
                     </Button>
                 )}
               </div>
@@ -313,54 +433,20 @@ export default function CoursePlayer() {
           <main className={`p-4 lg:p-8 transition-all duration-300 ${
             showLessonList ? 'w-full lg:w-2/3 xl:w-3/4' : 'w-full'
           }`}>
-            <div className="aspect-video bg-black rounded-xl shadow-2xl overflow-hidden relative sticky top-16 z-10">
-              {/* LOGO SOBRE O VÍDEO - CANTO SUPERIOR DIREITO */}
-              {settings?.store_logo_url && (
-                <img 
-                  src={settings.store_logo_url}
-                  alt="Logo da Loja"
-                  className="absolute top-4 right-4 z-20 h-8 md:h-10 w-auto opacity-80"
-                />
-              )}
-
-              {loadingVideo && (
-                  <div className="w-full h-full flex items-center justify-center text-white">
-                      <Loader2 className="w-8 h-8 animate-spin" />
-                  </div>
-              )}
-              {videoId && (
-                 <iframe
-                    key={videoId}
-                    src={`https://drive.google.com/file/d/${videoId}/preview`}
-                    frameBorder="0"
-                    allow="autoplay; fullscreen"
-                    allowFullScreen
-                    className="w-full h-full"
-                    title={activeLesson?.title || 'Player de Vídeo'}
-                    onLoad={() => setLoadingVideo(false)}
-                 ></iframe>
-              )}
-              {!activeLesson && !loading && (
-                 <div className="w-full h-full flex flex-col items-center justify-center text-white p-8 text-center">
-                    <PlayCircle className="w-16 h-16 mb-4 opacity-50"/>
-                    <h3 className="text-xl font-semibold">Bem-vindo ao curso!</h3>
-                    <p className="text-gray-300">Selecione uma aula na lista para começar a assistir.</p>
-                 </div>
-              )}
-            </div>
+            {renderVideoPlayer()}
 
             <div className="mt-8">
               <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                {activeLesson?.title || " "}
+                {currentLesson?.title || " "}
               </h2>
-              {activeLesson?.description && (
+              {currentLesson?.description && (
                   <p className={`mt-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                    {activeLesson.description}
+                    {currentLesson.description}
                   </p>
               )}
-               {activeLesson?.downloadable_resource_url && (
+               {currentLesson?.downloadable_resource_url && (
                     <Button asChild className="mt-4">
-                        <a href={activeLesson.downloadable_resource_url} target="_blank" rel="noopener noreferrer">
+                        <a href={currentLesson.downloadable_resource_url} target="_blank" rel="noopener noreferrer">
                             <Download className="w-4 h-4 mr-2" />
                             Baixar Material da Aula
                         </a>
@@ -403,7 +489,7 @@ export default function CoursePlayer() {
                         key={lesson.id}
                         onClick={() => handleLessonClick(lesson)}
                         className={`w-full text-left p-3 rounded-lg flex items-center gap-4 transition-all duration-200 ${
-                          activeLesson?.id === lesson.id 
+                          currentLesson?.id === lesson.id 
                             ? darkMode
                               ? 'bg-blue-900/50 shadow-sm'
                               : 'bg-blue-100 shadow-sm'
@@ -427,7 +513,7 @@ export default function CoursePlayer() {
                           </div>
                         </div>
                         <span className={`flex-1 text-sm font-medium ${
-                          activeLesson?.id === lesson.id 
+                          currentLesson?.id === lesson.id 
                             ? darkMode 
                               ? 'text-blue-400' 
                               : 'text-blue-700'

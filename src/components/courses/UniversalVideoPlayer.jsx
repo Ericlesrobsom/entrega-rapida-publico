@@ -1,100 +1,153 @@
-import React, { useState } from 'react';
-import { Play } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { googleDriveVideo } from "@/api/functions";
 
-export default function UniversalVideoPlayer({ videoUrl, title, className, thumbnail }) {
-  const [isPlaying, setIsPlaying] = useState(false);
+export default function UniversalVideoPlayer({ 
+  videoUrl, 
+  googleDriveId, 
+  courseId,
+  title = "Aula", 
+  autoplay = false, 
+  controls = true,
+  settings = {},
+  onProgress = () => {},
+  onComplete = () => {}
+}) {
+  const videoRef = useRef(null);
+  const [videoSrc, setVideoSrc] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handlePlayClick = () => {
-    setIsPlaying(true);
+  // Se for ID do Google Drive, busca o stream
+  useEffect(() => {
+    if (googleDriveId && courseId) {
+      setLoading(true);
+      setError(null);
+
+      const loadGoogleDriveVideo = async () => {
+        try {
+          const { data } = await googleDriveVideo({
+            action: 'proxyVideo',
+            videoId: googleDriveId,
+            courseId: courseId
+          });
+
+          // Usar a função como proxy para o vídeo
+          const proxyUrl = `/functions/googleDriveVideo?action=proxyVideo&videoId=${googleDriveId}&courseId=${courseId}`;
+          setVideoSrc(proxyUrl);
+        } catch (error) {
+          console.error('Erro ao carregar vídeo do Google Drive:', error);
+          setError('Não foi possível carregar o vídeo. Verifique se você tem acesso a este curso.');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      loadGoogleDriveVideo();
+    } else if (videoUrl) {
+      // Usar URL direta
+      setVideoSrc(videoUrl);
+    }
+  }, [googleDriveId, courseId, videoUrl]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleTimeUpdate = () => {
+      const progress = (video.currentTime / video.duration) * 100;
+      onProgress(progress, video.currentTime, video.duration);
+    };
+
+    const handleEnded = () => {
+      onComplete();
+    };
+
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    video.addEventListener('ended', handleEnded);
+
+    return () => {
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+      video.removeEventListener('ended', handleEnded);
+    };
+  }, [onProgress, onComplete]);
+
+  // Configurações de estilo do player
+  const iconSize = settings.video_player_icon_size || 80;
+  const iconPosition = settings.video_player_icon_position || 'center';
+  const iconOpacity = settings.video_player_icon_opacity || 0.8;
+
+  const getPositionClasses = (position) => {
+    const positions = {
+      'center': 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2',
+      'top-left': 'top-4 left-4',
+      'top-right': 'top-4 right-4',
+      'top-center': 'top-4 left-1/2 transform -translate-x-1/2',
+      'bottom-left': 'bottom-4 left-4',
+      'bottom-right': 'bottom-4 right-4',
+      'bottom-center': 'bottom-4 left-1/2 transform -translate-x-1/2'
+    };
+    return positions[position] || positions['center'];
   };
 
-  const getDriveVideoId = (url) => {
-    if (!url) return null;
-    const match = url.match(/drive\.google\.com.*\/d\/([a-zA-Z0-9_-]+)/);
-    return match ? match[1] : null;
-  };
-
-  const videoId = getDriveVideoId(videoUrl);
-
-  // Se não for um vídeo válido, exibe uma mensagem
-  if (!videoId) {
+  if (loading) {
     return (
-      <div className={`relative flex items-center justify-center bg-black text-white text-center p-4 rounded-lg aspect-video ${className}`}>
-        <p>URL de vídeo inválida ou não suportada.</p>
+      <div className="relative w-full h-64 bg-gray-900 rounded-lg flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p>Carregando vídeo...</p>
+        </div>
       </div>
     );
   }
 
-  const ClickBlocker = () => (
-    <div 
-      className="w-full h-full cursor-default"
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        return false;
-      }}
-      onMouseDown={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        return false;
-      }}
-    />
-  );
+  if (error) {
+    return (
+      <div className="relative w-full h-64 bg-red-900 rounded-lg flex items-center justify-center">
+        <div className="text-white text-center p-6">
+          <p className="text-lg mb-2">⚠️ Erro ao Carregar</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!videoSrc) {
+    return (
+      <div className="relative w-full h-64 bg-gray-800 rounded-lg flex items-center justify-center">
+        <p className="text-white">Nenhum vídeo configurado</p>
+      </div>
+    );
+  }
 
   return (
-    <div className={`relative w-full aspect-video bg-black rounded-lg overflow-hidden group ${className}`}>
-      {isPlaying ? (
-        <div className="relative w-full h-full">
-          {/* Iframe do vídeo */}
-          <iframe
-            src={`https://drive.google.com/file/d/${videoId}/preview?autoplay=1`}
-            className="w-full h-full"
-            frameBorder="0"
-            allow="autoplay; encrypted-media"
-            allowFullScreen
-            title={title}
-            sandbox="allow-same-origin allow-scripts allow-forms"
-          />
-          
-          {/* Overlay para bloquear cliques na parte inferior (AGORA MAIOR) */}
-          <div className="absolute bottom-0 left-0 right-0 h-24 bg-transparent z-10 pointer-events-auto">
-            <ClickBlocker />
-          </div>
-          
-          {/* Overlay para bloquear o canto superior direito (AGORA MAIOR) */}
-          <div className="absolute top-0 right-0 w-32 h-16 bg-transparent z-10 pointer-events-auto">
-            <ClickBlocker />
-          </div>
+    <div className="relative w-full">
+      <video
+        ref={videoRef}
+        className="w-full h-auto rounded-lg shadow-lg"
+        controls={controls}
+        autoPlay={autoplay}
+        preload="metadata"
+        style={{ backgroundColor: '#000' }}
+      >
+        <source src={videoSrc} type="video/mp4" />
+        <p className="text-white p-4">
+          Seu navegador não suporta o elemento de vídeo.
+        </p>
+      </video>
 
-          {/* Overlay para bloquear o canto superior esquerdo (PREVENÇÃO) */}
-          <div className="absolute top-0 left-0 w-32 h-16 bg-transparent z-10 pointer-events-auto">
-            <ClickBlocker />
-          </div>
-        </div>
-      ) : (
-        <div
-          className="w-full h-full flex items-center justify-center cursor-pointer bg-cover bg-center relative"
-          style={{ 
-            backgroundImage: thumbnail ? `url(${thumbnail})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center'
-          }}
-          onClick={handlePlayClick}
-        >
-          {/* Overlay escuro para melhor contraste */}
-          <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all duration-300"></div>
-          
-          {/* Ícone de play */}
-          <div className="relative z-10 flex items-center justify-center w-20 h-20 bg-white/20 rounded-full backdrop-blur-sm group-hover:bg-white/30 group-hover:scale-110 transition-all duration-300">
-            <Play className="w-8 h-8 text-white ml-1" fill="currentColor" />
-          </div>
-          
-          {/* Título do vídeo (se fornecido) */}
-          {title && (
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
-              <p className="text-white text-sm font-medium truncate">{title}</p>
-            </div>
-          )}
+      {/* Ícone personalizado sobreposto */}
+      {settings.video_player_icon_url && (
+        <div className={`absolute ${getPositionClasses(iconPosition)} pointer-events-none z-10`}>
+          <img
+            src={settings.video_player_icon_url}
+            alt="Player Icon"
+            className="object-contain"
+            style={{
+              width: settings.video_player_icon_width || iconSize,
+              height: settings.video_player_icon_height || iconSize,
+              opacity: iconOpacity
+            }}
+          />
         </div>
       )}
     </div>

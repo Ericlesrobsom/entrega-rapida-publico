@@ -2,12 +2,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input"; // New import
+import { Label } from "@/components/ui/label"; // New import
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Package, Star, Truck, Mail, X, MessageCircle } from "lucide-react";
+import { ShoppingCart, Package, Star, Truck, Mail, X, MessageCircle, Loader2, Tag } from "lucide-react"; // New imports: Loader2, Tag
 import { motion } from "framer-motion";
 import ProductQuestions from "./ProductQuestions";
 import ProductReviews from "./ProductReviews";
 import ProductReviewModal from "./ProductReviewModal";
+import { Coupon } from "@/api/entities"; // New import
+import { toast } from "sonner"; // New import
 
 const translations = {
   pt: {
@@ -46,18 +50,69 @@ const StarRating = ({ rating, reviewsCount, language = 'pt' }) => {
   );
 };
 
-export default function ProductDetailsModal({ product, isOpen, onClose, onAddToCart, language = 'pt', deliveryMethod, darkMode }) { // Recebe darkMode como prop
+export default function ProductDetailsModal({ product, isOpen, onClose, onAddToCart, language = 'pt', deliveryMethod, darkMode }) {
   const t = (key) => translations[language][key] || key;
   const [selectedImage, setSelectedImage] = useState(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   
-  // The darkMode state and its useEffect are removed, as it's now passed as a prop.
+  // States for coupon functionality
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [finalPrice, setFinalPrice] = useState(product?.price || 0);
+  const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState("");
 
   useEffect(() => {
     if (product && isOpen) {
       setSelectedImage(product.image_url);
+      setFinalPrice(product.price); // Reset final price to original product price
+      setCouponCode(""); // Clear coupon code
+      setAppliedCoupon(null); // Clear applied coupon
+      setCouponError(""); // Clear any coupon error
+    } else if (product) {
+      // If modal is closing or product changes but modal isn't open, ensure finalPrice is set
+      setFinalPrice(product.price);
     }
   }, [product, isOpen]);
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError("Por favor, digite um código de cupom.");
+      return;
+    }
+    setIsCheckingCoupon(true);
+    setCouponError("");
+    try {
+      const coupons = await Coupon.filter({
+        code: couponCode.trim().toUpperCase(),
+        is_active: true
+      });
+      const coupon = coupons[0];
+
+      if (coupon && coupon.current_uses < coupon.max_uses && (!coupon.expires_at || new Date(coupon.expires_at) > new Date())) {
+        const discountAmount = (product.price * coupon.discount_percentage) / 100;
+        setFinalPrice(product.price - discountAmount);
+        setAppliedCoupon(coupon);
+        toast.success(`Cupom "${coupon.code}" aplicado!`);
+      } else {
+        setCouponError("Cupom inválido, expirado ou esgotado.");
+        toast.error("Cupom inválido, expirado ou esgotado.");
+      }
+    } catch (err) {
+      setCouponError("Erro ao verificar o cupom.");
+      toast.error("Erro ao verificar o cupom.");
+    } finally {
+      setIsCheckingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponCode("");
+    setAppliedCoupon(null);
+    setFinalPrice(product.price);
+    setCouponError("");
+    toast.info("Cupom removido.");
+  };
 
   if (!product) return null;
 
@@ -222,6 +277,51 @@ export default function ProductDetailsModal({ product, isOpen, onClose, onAddToC
                   )}
               </div>
 
+              {/* Seção de Preço e Cupom */}
+              <div className={`p-4 rounded-lg space-y-3 border-2 ${appliedCoupon ? 'border-green-400' : (darkMode ? 'border-gray-700' : 'border-gray-200')}`}>
+                <h3 className={`font-semibold text-lg ${darkMode ? 'text-white' : 'text-slate-900'}`}>Preço e Descontos</h3>
+                {appliedCoupon ? (
+                  <div className="text-center space-y-1">
+                    <p className={`text-lg line-through ${darkMode ? 'text-gray-500' : 'text-slate-400'}`}>
+                      R$ {product.price.toFixed(2).replace('.', ',')}
+                    </p>
+                    <p className="text-3xl font-bold text-green-500">
+                      R$ {finalPrice.toFixed(2).replace('.', ',')}
+                    </p>
+                    <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                      -{appliedCoupon.discount_percentage}% com cupom {appliedCoupon.code}
+                    </Badge>
+                  </div>
+                ) : (
+                  <p className={`text-3xl font-bold text-center ${darkMode ? 'text-white' : 'text-slate-800'}`}>
+                    R$ {product.price.toFixed(2).replace('.', ',')}
+                  </p>
+                )}
+
+                <div className={`space-y-2 pt-3 border-t ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+                  <Label htmlFor="coupon-modal" className={darkMode ? 'text-gray-300' : 'text-slate-700'}>Tem um cupom?</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="coupon-modal"
+                      placeholder="Digite seu cupom"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      disabled={!!appliedCoupon || isCheckingCoupon}
+                      className={darkMode ? 'bg-gray-700 text-white placeholder:text-gray-400 border-gray-600 focus-visible:ring-blue-500' : 'bg-white text-gray-900 border-gray-300 focus-visible:ring-blue-500'}
+                    />
+                    {appliedCoupon ? (
+                      <Button variant="destructive" onClick={handleRemoveCoupon}>Remover</Button>
+                    ) : (
+                      <Button onClick={handleApplyCoupon} disabled={isCheckingCoupon || !couponCode.trim()}>
+                        {isCheckingCoupon ? <Loader2 className="w-4 h-4 animate-spin"/> : 'Aplicar'}
+                      </Button>
+                    )}
+                  </div>
+                  {couponError && <p className="text-xs text-red-500">{couponError}</p>}
+                </div>
+              </div>
+
+
               {/* Stock Quantity */}
               {product.stock_quantity !== null && (
                 <div className="flex items-center gap-2">
@@ -241,14 +341,14 @@ export default function ProductDetailsModal({ product, isOpen, onClose, onAddToC
               }`}>
                 <Button
                   onClick={() => {
-                    onAddToCart(product);
+                    onAddToCart(product); // Adiciona o produto original ao carrinho, o desconto final é no checkout
                     onClose();
                   }}
                   className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3"
                   disabled={product.stock_quantity <= 0}
                 >
                   <ShoppingCart className="w-5 h-5 mr-2" />
-                  {product.stock_quantity > 0 ? `Adicionar ao Carrinho - R$ ${product.price?.toFixed(2).replace('.', ',')}` : t('outOfStock')}
+                  {product.stock_quantity > 0 ? `Adicionar por R$ ${finalPrice.toFixed(2).replace('.', ',')}` : t('outOfStock')}
                 </Button>
 
                 <Button
