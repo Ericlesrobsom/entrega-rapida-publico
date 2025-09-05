@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, ShoppingCart, CreditCard } from "lucide-react";
+import { Loader2, ShoppingCart, CreditCard, Ticket } from "lucide-react"; // Added Ticket icon
 import { Coupon } from "@/api/entities";
 import { toast } from "sonner";
 
@@ -251,7 +251,10 @@ export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting
 
               {/* Cupom */}
               <div className="space-y-2">
-                <Label htmlFor="coupon">Cupom de Desconto (opcional)</Label>
+                <Label htmlFor="coupon" className="flex items-center gap-2 text-orange-500 font-semibold">
+                  <Ticket className="w-5 h-5"/>
+                  Cupom de Desconto (opcional)
+                </Label>
                 <div className="flex gap-2">
                   <Input
                     id="coupon"
@@ -266,7 +269,11 @@ export default function CheckoutDialog({ isOpen, onClose, onSubmit, isSubmitting
                     variant="outline"
                     onClick={handleCouponApply}
                     disabled={!customerData.coupon_code || isValidatingCoupon || appliedCoupon}
-                    className="border-[--store-primary] text-[--store-primary] hover:bg-[--store-primary] hover:text-white"
+                    className="bg-orange-500 hover:bg-orange-600 text-white border border-orange-500"
+                    style={{
+                      borderColor: '#f97316',
+                      backgroundColor: '#f97316'
+                    }}
                   >
                     {isValidatingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : "Aplicar"}
                   </Button>

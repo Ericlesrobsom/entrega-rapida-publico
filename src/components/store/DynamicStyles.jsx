@@ -85,6 +85,21 @@ export default function DynamicStyles({ settings }) {
           z-index: 3;
         }
 
+        /* New glow effect for text */
+        .verified-text-glow {
+          color: transparent;
+          -webkit-background-clip: text;
+          background-clip: text;
+          background-image: linear-gradient(90deg, #fde047, #f97316, #fde047);
+          background-size: 200% 100%;
+          animation: glow-text 3s linear infinite;
+        }
+
+        @keyframes glow-text {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+
         :root {
           --store-primary: ${settings.store_primary_color || '#f97316'}; /* Laranja como padrão */
           --store-secondary: ${settings.store_secondary_color || '#4f46e5'};

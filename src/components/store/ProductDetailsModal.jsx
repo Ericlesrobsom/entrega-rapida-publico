@@ -2,16 +2,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input"; // New import
-import { Label } from "@/components/ui/label"; // New import
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Package, Star, Truck, Mail, X, MessageCircle, Loader2, Tag } from "lucide-react"; // New imports: Loader2, Tag
+import { ShoppingCart, Package, Star, Truck, Mail, X, MessageCircle, Loader2, Ticket } from "lucide-react";
 import { motion } from "framer-motion";
 import ProductQuestions from "./ProductQuestions";
 import ProductReviews from "./ProductReviews";
 import ProductReviewModal from "./ProductReviewModal";
-import { Coupon } from "@/api/entities"; // New import
-import { toast } from "sonner"; // New import
+import { Coupon } from "@/api/entities";
+import { toast } from "sonner";
 
 const translations = {
   pt: {
@@ -246,9 +246,9 @@ export default function ProductDetailsModal({ product, isOpen, onClose, onAddToC
                     }`}>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-blue-600">✓</span>
-                        <span className={`font-medium text-sm ${
-                          darkMode ? 'text-blue-300' : 'text-blue-800'
-                        }`}>Produto Verificado</span>
+                        <span className={`font-semibold text-sm verified-text-glow`}>
+                          Produto Verificado
+                        </span>
                       </div>
                       {product.warranty_info && (
                         <p className={`text-xs ${
@@ -299,7 +299,10 @@ export default function ProductDetailsModal({ product, isOpen, onClose, onAddToC
                 )}
 
                 <div className={`space-y-2 pt-3 border-t ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-                  <Label htmlFor="coupon-modal" className={darkMode ? 'text-gray-300' : 'text-slate-700'}>Tem um cupom?</Label>
+                  <Label htmlFor="coupon-modal" className="flex items-center gap-2 text-orange-500 font-semibold">
+                    <Ticket className="w-5 h-5"/>
+                    Tem um cupom?
+                  </Label>
                   <div className="flex gap-2">
                     <Input
                       id="coupon-modal"
@@ -307,12 +310,20 @@ export default function ProductDetailsModal({ product, isOpen, onClose, onAddToC
                       value={couponCode}
                       onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                       disabled={!!appliedCoupon || isCheckingCoupon}
-                      className={darkMode ? 'bg-gray-700 text-white placeholder:text-gray-400 border-gray-600 focus-visible:ring-blue-500' : 'bg-white text-gray-900 border-gray-300 focus-visible:ring-blue-500'}
+                      className={darkMode ? 'bg-gray-700 text-white placeholder:text-gray-400 border-gray-600 focus-visible:ring-orange-500' : 'bg-white text-gray-900 border-gray-300 focus-visible:ring-orange-500'}
                     />
                     {appliedCoupon ? (
                       <Button variant="destructive" onClick={handleRemoveCoupon}>Remover</Button>
                     ) : (
-                      <Button onClick={handleApplyCoupon} disabled={isCheckingCoupon || !couponCode.trim()}>
+                      <Button 
+                        onClick={handleApplyCoupon} 
+                        disabled={isCheckingCoupon || !couponCode.trim()}
+                        className="bg-orange-500 hover:bg-orange-600 text-white border border-orange-500"
+                        style={{
+                          borderColor: '#f97316',
+                          backgroundColor: '#f97316'
+                        }}
+                      >
                         {isCheckingCoupon ? <Loader2 className="w-4 h-4 animate-spin"/> : 'Aplicar'}
                       </Button>
                     )}
