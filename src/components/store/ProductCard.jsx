@@ -246,12 +246,7 @@ export default function ProductCard({
               }`}
             >
               <ShoppingCart className="w-4 h-4 mr-2" />
-              {isOutOfStock ? t('outOfStock') : (
-                <>
-                  <span className="hidden sm:inline">🛒 {t('addToCart')}</span>
-                  <span className="sm:hidden">{t('buy')}</span>
-                </>
-              )}
+              {isOutOfStock ? t('outOfStock') : t('buy')}
             </Button>
             
             {/* Botão Secundário - Ver Detalhes */}
@@ -263,7 +258,7 @@ export default function ProductCard({
                   ? 'border-gray-600 hover:bg-gray-700 text-gray-300 hover:text-white' 
                   : 'border-slate-300 hover:bg-slate-100'
               }`}
-              title="Ver detalhes e fazer uma pergunta"
+              title={t('viewDetails')}
             >
               <Eye className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">{t('details')}</span>

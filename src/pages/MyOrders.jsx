@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Order } from "@/api/entities";
 import { User } from "@/api/entities";
@@ -5,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Package, Clock, CheckCircle, Truck, X } from "lucide-react";
+import { ArrowLeft, Package, Clock, CheckCircle, Truck, X, PlayCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { format } from 'date-fns';
@@ -153,9 +154,8 @@ export default function MyOrders() {
     <div className={`min-h-screen transition-colors duration-300 ${
       darkMode ? 'bg-gray-900' : 'bg-gray-100'
     }`}>
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+      <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+        <header className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <Button asChild variant="ghost" size="icon">
               <Link to={createPageUrl("Store")}>
@@ -171,9 +171,8 @@ export default function MyOrders() {
               }`}>Acompanhe seus pedidos aqui</p>
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* Orders List */}
         {orders.length === 0 ? (
           <Card className={`${
             darkMode ? 'bg-gray-800 text-white' : 'bg-white'
@@ -196,128 +195,119 @@ export default function MyOrders() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-6">
-            {orders.map((order) => (
-              <Card key={order.id} className={`shadow-lg hover:shadow-xl transition-all duration-300 ${
-                darkMode ? 'bg-gray-800 text-white' : 'bg-white'
-              }`}>
-                <CardHeader className={`border-b ${
-                  darkMode ? 'border-gray-700' : 'border-gray-200'
+          <ScrollArea className="h-full">
+            <div className="space-y-6">
+              {orders.map((order) => (
+                <Card key={order.id} className={`shadow-lg border-0 transition-all duration-300 ${
+                  darkMode ? 'bg-gray-800' : 'bg-white/90 backdrop-blur-sm'
                 }`}>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className={`text-lg ${
-                        darkMode ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        Pedido #{order.id.slice(-6).toUpperCase()}
-                      </CardTitle>
-                      <p className={`text-sm ${
-                        darkMode ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
-                        {format(new Date(order.created_date), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
-                      </p>
-                    </div>
-                    {getStatusBadge(order.status, darkMode)}
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="p-6">
-                  {/* Itens do Pedido */}
-                  <div className="space-y-4">
-                    <h4 className={`font-semibold ${
-                      darkMode ? 'text-white' : 'text-gray-900'
-                    }`}>Itens do Pedido:</h4>
-                    <div className="space-y-3">
-                      {order.items.map((item, index) => (
-                        <div key={index} className={`flex justify-between items-center p-3 rounded-lg ${
-                          darkMode ? 'bg-gray-700/50' : 'bg-gray-50'
-                        }`}>
-                          <div className="flex items-center gap-3">
-                            {item.image_url && (
-                              <img 
-                                src={item.image_url} 
-                                alt={item.product_name}
-                                className="w-12 h-12 rounded-lg object-cover"
-                              />
-                            )}
-                            <div>
-                              <p className={`font-medium ${
-                                darkMode ? 'text-white' : 'text-gray-900'
-                              }`}>
-                                {item.product_name}
-                              </p>
-                              <p className={`text-sm ${
-                                darkMode ? 'text-gray-400' : 'text-gray-600'
-                              }`}>
-                                Quantidade: {item.quantity}
-                              </p>
-                            </div>
-                          </div>
-                          <p className={`font-semibold ${
-                            darkMode ? 'text-white' : 'text-gray-900'
-                          }`}>
-                            {formatPrice(item.total)}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Resumo Financeiro */}
-                    <div className={`border-t pt-4 space-y-2 ${
-                      darkMode ? 'border-gray-700' : 'border-gray-200'
-                    }`}>
-                      <div className="flex justify-between items-center">
-                        <span className={`${
-                          darkMode ? 'text-gray-400' : 'text-gray-600'
-                        }`}>Subtotal:</span>
-                        <span className={`${
+                  <CardHeader className={`border-b ${
+                    darkMode ? 'border-gray-700' : 'border-gray-200'
+                  }`}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className={`text-lg ${
                           darkMode ? 'text-white' : 'text-gray-900'
-                        }`}>{formatPrice(order.total_amount)}</span>
+                        }`}>
+                          Pedido #{order.id.slice(-6).toUpperCase()}
+                        </CardTitle>
+                        <p className={`text-sm ${
+                          darkMode ? 'text-gray-400' : 'text-gray-500'
+                        }`}>
+                          {format(new Date(order.created_date), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
                       </div>
-                      
-                      {order.discount_amount > 0 && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-green-600">Desconto:</span>
-                          <span className="text-green-600">-{formatPrice(order.discount_amount)}</span>
-                        </div>
-                      )}
-                      
-                      <div className="flex justify-between items-center text-xl font-bold border-t pt-2">
-                        <span>Total:</span>
-                        <span className="text-[--store-primary]">{formatPrice(order.final_total || order.total_amount)}</span>
-                      </div>
+                      {getStatusBadge(order.status, darkMode)}
                     </div>
-
-                    {/* Informações de Entrega */}
-                    <div className={`border-t pt-4 ${
-                      darkMode ? 'border-gray-700' : 'border-gray-200'
-                    }`}>
-                      <h4 className={`font-semibold mb-2 ${
+                  </CardHeader>
+                  
+                  <CardContent className="p-6">
+                    {/* Itens do Pedido */}
+                    <div className="space-y-4">
+                      <h4 className={`font-semibold ${
                         darkMode ? 'text-white' : 'text-gray-900'
-                      }`}>Informações de Entrega:</h4>
-                      <p className={`text-sm ${
-                        darkMode ? 'text-gray-300' : 'text-gray-700'
+                      }`}>Itens do Pedido:</h4>
+                      <div className="space-y-3">
+                        {order.items?.map((item, index) => (
+                          <div key={index} className={`p-3 rounded-lg ${darkMode ? 'bg-gray-700/50' : 'bg-slate-50'}`}>
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className={`font-semibold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{item.quantity}x {item.product_name}</p>
+                                <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{formatPrice(item.unit_price)}</p>
+                              </div>
+                              <p className={`font-semibold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{formatPrice(item.total)}</p>
+                            </div>
+                            
+                            {/* BOTÃO PARA ACESSAR O CURSO */}
+                            {order.status === 'entregue' && item.digital_content?.startsWith('course_access:') && (
+                              <div className="mt-3 pt-3 border-t border-dashed border-slate-200 dark:border-gray-600">
+                                <Button asChild size="sm" className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto">
+                                  <Link to={createPageUrl(`CoursePlayer?id=${item.digital_content.split(':')[1]}`)}>
+                                    <PlayCircle className="w-4 h-4 mr-2" />
+                                    Acessar Curso
+                                  </Link>
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Resumo Financeiro */}
+                      <div className={`mt-4 pt-4 border-t border-slate-200 dark:border-gray-700 text-right space-y-2`}>
+                        <div className="flex justify-between items-center">
+                          <span className={`${
+                            darkMode ? 'text-gray-400' : 'text-gray-600'
+                          }`}>Subtotal:</span>
+                          <span className={`${
+                            darkMode ? 'text-white' : 'text-gray-900'
+                          }`}>{formatPrice(order.total_amount)}</span>
+                        </div>
+                        
+                        {order.discount_amount > 0 && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-green-600">Desconto:</span>
+                            <span className="text-green-600">-{formatPrice(order.discount_amount)}</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-between items-center text-xl font-bold border-t pt-2">
+                          <span>Total:</span>
+                          <span className="text-[--store-primary]">{formatPrice(order.final_total || order.total_amount)}</span>
+                        </div>
+                      </div>
+
+                      {/* Informações de Entrega */}
+                      <div className={`border-t pt-4 ${
+                        darkMode ? 'border-gray-700' : 'border-gray-200'
                       }`}>
-                        <strong>Endereço:</strong> {order.customer_address}
-                      </p>
-                      <p className={`text-sm ${
-                        darkMode ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
-                        <strong>Telefone:</strong> {order.customer_phone}
-                      </p>
-                      {order.payment_method && (
+                        <h4 className={`font-semibold mb-2 ${
+                          darkMode ? 'text-white' : 'text-gray-900'
+                        }`}>Informações de Entrega:</h4>
                         <p className={`text-sm ${
                           darkMode ? 'text-gray-300' : 'text-gray-700'
                         }`}>
-                          <strong>Pagamento:</strong> {order.payment_method}
+                          <strong>Endereço:</strong> {order.customer_address}
                         </p>
-                      )}
+                        <p className={`text-sm ${
+                          darkMode ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
+                          <strong>Telefone:</strong> {order.customer_phone}
+                        </p>
+                        {order.payment_method && (
+                          <p className={`text-sm ${
+                            darkMode ? 'text-gray-300' : 'text-gray-700'
+                          }`}>
+                            <strong>Pagamento:</strong> {order.payment_method}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </ScrollArea>
         )}
       </div>
     </div>
