@@ -93,7 +93,7 @@ export default function ProductCard({
 
   // APLICAÇÃO DO DESCONTO DE NOVO CLIENTE NA EXIBIÇÃO DO PREÇO FINAL (conforme outline)
   // priceToUse é o preço base para calcular o finalPrice
-  const priceToUse = hasOriginalDiscount ? product.price : (product.original_price || product.price);
+  const priceToUse = hasOriginalDiscount ? (product.price || 0) : (product.original_price || product.price || 0);
   // finalPrice é o preço que será exibido, aplicando o desconto de novo cliente se a oferta estiver ativa
   const finalPrice = isNewCustomerOfferActive ? priceToUse * 0.8 : priceToUse;
 
@@ -249,11 +249,11 @@ export default function ProductCard({
             <div className="text-center">
               {hasOriginalDiscount && (
                 <p className={`text-sm line-through ${darkMode ? 'text-gray-500' : 'text-slate-400'}`}>
-                  R$ {product.original_price?.toFixed(2).replace('.', ',')}
+                  R$ {(product.original_price || 0).toFixed(2).replace('.', ',')}
                 </p>
               )}
               <p className={`text-2xl font-bold ${priceColorClass}`}>
-                R$ {finalPrice.toFixed(2).replace('.', ',')}
+                R$ {(finalPrice || 0).toFixed(2).replace('.', ',')}
               </p>
               {/* MOSTRAR DESCONTO DE BOAS-VINDAS */}
               {isNewCustomerOfferActive && (

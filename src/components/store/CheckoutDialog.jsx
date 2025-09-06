@@ -1,16 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, ShoppingCart, CreditCard, Ticket, Gift } from "lucide-react";
 import { Coupon } from "@/api/entities";
 import { toast } from "sonner";
+import { Card, CardContent } from "@/components/ui/card"; // Added Card and CardContent import
 
 export default function CheckoutDialog({
   isOpen,
@@ -20,7 +20,7 @@ export default function CheckoutDialog({
   user,
   cartItems,
   total,
-  discountAmount, // Added discountAmount prop
+  discountAmount,
   paymentMethods = [],
   isNewCustomerOfferActive,
   t
@@ -34,11 +34,14 @@ export default function CheckoutDialog({
     payment_method: "", // Will store the name of the selected payment method
     coupon_code: "",
     discount_amount: 0, // This will store coupon discount amount
-    // Initialize final_total based on whether the new customer offer is active
-    final_total: isNewCustomerOfferActive ? total - (discountAmount || 0) : total
+    // Initialize final_total based on whether the new customer offer is active, ensuring total is not undefined
+    final_total: isNewCustomerOfferActive ? (total || 0) - (discountAmount || 0) : (total || 0)
   });
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
+
+  // New finalTotal variable as per outline, reflecting only the initial total and the prop discountAmount (new customer offer)
+  const finalTotal = (total || 0) - (discountAmount || 0);
 
   useEffect(() => {
     const isDark = document.documentElement.classList.contains('dark');
@@ -60,8 +63,8 @@ export default function CheckoutDialog({
     setCustomerData(prev => ({
       ...prev,
       name: user?.full_name || prev.name,
-      // Recalculate final_total based on the new offer logic
-      final_total: isNewCustomerOfferActive ? total - (discountAmount || 0) : total,
+      // Recalculate final_total based on the new offer logic, ensuring total is not undefined
+      final_total: isNewCustomerOfferActive ? (total || 0) - (discountAmount || 0) : (total || 0),
       discount_amount: 0, // Reset discount
       coupon_code: '', // Clear coupon on dialog open
     }));
@@ -92,7 +95,7 @@ export default function CheckoutDialog({
         setCustomerData(prev => ({
           ...prev,
           discount_amount: 0,
-          final_total: total // Reset total if coupon is invalid
+          final_total: (total || 0) // Reset total if coupon is invalid, ensuring total is not undefined
         }));
         setIsValidatingCoupon(false);
         return;
@@ -106,7 +109,7 @@ export default function CheckoutDialog({
         setCustomerData(prev => ({
           ...prev,
           discount_amount: 0,
-          final_total: total
+          final_total: (total || 0) // Ensuring total is not undefined
         }));
         setIsValidatingCoupon(false);
         return;
@@ -118,14 +121,15 @@ export default function CheckoutDialog({
         setCustomerData(prev => ({
           ...prev,
           discount_amount: 0,
-          final_total: total
+          final_total: (total || 0) // Ensuring total is not undefined
         }));
         setIsValidatingCoupon(false);
         return;
       }
 
-      const discount = (total * coupon.discount_percentage) / 100;
-      const final = total - discount;
+      // Ensure total is not undefined before calculation
+      const discount = ((total || 0) * coupon.discount_percentage) / 100;
+      const final = (total || 0) - discount;
 
       setAppliedCoupon(coupon);
       setCustomerData(prev => ({
@@ -141,7 +145,7 @@ export default function CheckoutDialog({
       setCustomerData(prev => ({
         ...prev,
         discount_amount: 0,
-        final_total: total // Reset total
+        final_total: (total || 0) // Reset total, ensuring total is not undefined
       }));
     } finally {
       setIsValidatingCoupon(false);
@@ -154,7 +158,7 @@ export default function CheckoutDialog({
       ...prev,
       coupon_code: '',
       discount_amount: 0,
-      final_total: total
+      final_total: (total || 0) // Ensuring total is not undefined
     }));
     toast.info("Cupom removido.");
   };
@@ -167,8 +171,9 @@ export default function CheckoutDialog({
     }
 
     // Determine the actual final total and discount for submission
-    const actualFinalTotalForSubmission = isNewCustomerOfferActive ? total - discountAmount : customerData.final_total;
-    const actualDiscountAmountForSubmission = isNewCustomerOfferActive ? discountAmount : customerData.discount_amount;
+    // Ensure total and discountAmount are not undefined for calculations
+    const actualFinalTotalForSubmission = isNewCustomerOfferActive ? (total || 0) - (discountAmount || 0) : customerData.final_total;
+    const actualDiscountAmountForSubmission = isNewCustomerOfferActive ? (discountAmount || 0) : customerData.discount_amount;
     const actualCouponCodeForSubmission = isNewCustomerOfferActive ? '' : customerData.coupon_code;
 
     // If a coupon was applied and is valid, increment its usage before submitting the order
@@ -198,20 +203,17 @@ export default function CheckoutDialog({
     onSubmit(dataToSubmit);
   };
 
-  // Calculate the final total to display, prioritizing the new customer offer
-  // Use the passed discountAmount if new customer offer is active
-  const finalTotal = isNewCustomerOfferActive ? total - (discountAmount || 0) : customerData.final_total;
-
   const formatPrice = (value) => {
-    return parseFloat(value).toFixed(2).replace('.', ',');
+    // Ensure value is a number before passing to toFixed
+    return parseFloat(value || 0).toFixed(2).replace('.', ',');
   };
 
   if (!isOpen) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={`sm:max-w-2xl max-h-[90vh] overflow-hidden transition-colors duration-300 ${
-        darkMode ? 'bg-gray-800 text-white' : 'bg-white text-slate-900'
+      <DialogContent className={`max-w-lg transition-colors duration-300 ${
+        darkMode ? 'bg-gray-900 text-white' : 'bg-white'
       }`}>
         <DialogHeader>
           <DialogTitle className="text-xl text-[--store-primary] flex items-center gap-2">
@@ -223,8 +225,9 @@ export default function CheckoutDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[70vh]">
-          <form onSubmit={handleSubmit} className="space-y-6 p-1">
+        {/* Replaced ScrollArea with a div for scrolling as per outline */}
+        <div className="py-4 px-1 max-h-[70vh] overflow-y-auto">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Dados do Cliente */}
             <div className="space-y-4">
               <h3 className={`font-semibold text-lg ${darkMode ? 'text-gray-200' : 'text-slate-800'}`}>Dados do Cliente</h3>
@@ -284,7 +287,7 @@ export default function CheckoutDialog({
                       {item.quantity}x R$ {formatPrice(item.product.price)}
                     </p>
                   </div>
-                  <p className="font-semibold text-[--store-primary]">R$ {formatPrice(item.product.price * item.quantity)}</p>
+                  <p className="font-semibold text-[--store-primary]">R$ {formatPrice((item.product.price || 0) * item.quantity)}</p>
                 </div>
               ))}
 
@@ -342,28 +345,34 @@ export default function CheckoutDialog({
                 )}
               </div>
 
-              {/* Total */}
-              <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-gray-700">
-                <div className={`flex justify-between ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>
-                  <span>Subtotal:</span>
-                  <span>R$ {formatPrice(total)}</span>
-                </div>
-                {isNewCustomerOfferActive && discountAmount > 0 ? (
-                  <div className="flex justify-between text-green-600 dark:text-green-400">
-                    <span><Gift className="w-4 h-4 inline mr-1" /> Desconto Novo Cliente (1º produto):</span>
-                    <span>-R$ {formatPrice(discountAmount)}</span>
+              {/* Total summary using Card component as per outline */}
+              <Card className={darkMode ? 'bg-gray-800' : 'bg-gray-50'}>
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>R$ {(total || 0).toFixed(2).replace('.', ',')}</span>
                   </div>
-                ) : customerData.discount_amount > 0 && (
-                  <div className="flex justify-between text-green-600 dark:text-green-400">
-                    <span>Desconto ({appliedCoupon?.code}):</span>
-                    <span>-R$ {formatPrice(customerData.discount_amount)}</span>
+                  {isNewCustomerOfferActive && (discountAmount || 0) > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span><Gift className="w-4 h-4 inline mr-1" /> Desconto de boas-vindas</span>
+                      <span>-R$ {(discountAmount || 0).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                  )}
+                  {/* Display coupon discount if active and new customer offer is not */}
+                  {!isNewCustomerOfferActive && (customerData.discount_amount || 0) > 0 && (
+                    <div className="flex justify-between text-green-600 dark:text-green-400">
+                      <span>Desconto ({appliedCoupon?.code}):</span>
+                      <span>-R$ {formatPrice(customerData.discount_amount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold text-lg text-[--store-primary]">
+                    <span>Total</span>
+                    <span className="font-bold text-lg text-[--store-primary]">
+                      R$ {formatPrice(isNewCustomerOfferActive ? finalTotal : customerData.final_total)}
+                    </span>
                   </div>
-                )}
-                <div className="flex justify-between text-xl font-bold text-[--store-primary]">
-                  <span>Total:</span>
-                  <span>R$ {formatPrice(finalTotal)}</span>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
 
             <Separator className={darkMode ? 'border-gray-700' : 'border-slate-200'} />
@@ -404,8 +413,8 @@ export default function CheckoutDialog({
               />
             </div>
 
-            {/* Botões */}
-            <div className="flex gap-4 pt-4">
+            {/* Botões wrapped in DialogFooter as per outline */}
+            <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose} className="flex-1">
                 Cancelar
               </Button>
@@ -420,12 +429,12 @@ export default function CheckoutDialog({
                     Processando...
                   </>
                 ) : (
-                  `Finalizar Pedido - R$ ${formatPrice(finalTotal)}`
+                  `Finalizar Pedido - R$ ${formatPrice(isNewCustomerOfferActive ? finalTotal : customerData.final_total)}`
                 )}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );

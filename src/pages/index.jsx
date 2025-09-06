@@ -42,6 +42,10 @@ import SocialLinks from "./SocialLinks";
 
 import GlobalOffers from "./GlobalOffers";
 
+import MyProfile from "./MyProfile";
+
+import Affiliates from "./Affiliates";
+
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
 const PAGES = {
@@ -87,6 +91,10 @@ const PAGES = {
     SocialLinks: SocialLinks,
     
     GlobalOffers: GlobalOffers,
+    
+    MyProfile: MyProfile,
+    
+    Affiliates: Affiliates,
     
 }
 
@@ -156,6 +164,10 @@ function PagesContent() {
                 <Route path="/SocialLinks" element={<SocialLinks />} />
                 
                 <Route path="/GlobalOffers" element={<GlobalOffers />} />
+                
+                <Route path="/MyProfile" element={<MyProfile />} />
+                
+                <Route path="/Affiliates" element={<Affiliates />} />
                 
             </Routes>
         </Layout>

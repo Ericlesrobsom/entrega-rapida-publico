@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,7 @@ export default function NewCustomerOfferModal({ isOpen, onClose, onActivate, tim
 
   // FUNÇÃO PARA FECHAR SEM ATIVAR - MARCA COMO JÁ MOSTRADO
   const handleClose = () => {
-    // Marcar que já foi mostrado para este usuário
+    // Marcar que já foi mostrado para este usuário/navegador
     if (typeof window !== 'undefined') {
       localStorage.setItem('newCustomerOfferShown', 'true');
     }
@@ -66,7 +65,7 @@ export default function NewCustomerOfferModal({ isOpen, onClose, onActivate, tim
                 🎉 Oferta Exclusiva!
               </h2>
               <p className="text-orange-100 font-medium">
-                Parabéns por se cadastrar! Ganhe um desconto especial:
+                Para novos clientes como você, um presente especial:
               </p>
             </div>
 
@@ -77,34 +76,23 @@ export default function NewCustomerOfferModal({ isOpen, onClose, onActivate, tim
                   20% OFF
                 </p>
                 <p className="text-lg font-bold text-white">
-                  em qualquer produto da loja!
+                  no seu primeiro produto!
                 </p>
                 <p className="text-sm text-orange-100 font-medium">
                   ⚡ Válido para apenas 1 produto
                 </p>
               </div>
             </div>
-
-            {/* Timer de urgência */}
-            <div className="bg-red-600/20 backdrop-blur-sm rounded-xl p-4 border border-red-400/30">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <Clock className="w-5 h-5 text-yellow-300 animate-pulse" />
-                <span className="text-yellow-300 font-semibold">Tempo restante:</span>
-              </div>
-              <div className="text-2xl font-mono font-bold text-white bg-black/30 rounded-lg px-4 py-2 inline-block">
-                {formatTimeLeft(timeLeft)}
-              </div>
-            </div>
             
             {/* Botões de ação */}
-            <div className="space-y-3">
+            <div className="space-y-3 pt-4">
               <Button
                 onClick={onActivate}
                 size="lg"
                 className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-black text-lg shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-200 border-2 border-yellow-300"
               >
                 <Zap className="w-6 h-6 mr-2" />
-                🚀 ATIVAR DESCONTO AGORA!
+                🚀 QUERO MEU DESCONTO!
               </Button>
 
               <Button
@@ -112,13 +100,13 @@ export default function NewCustomerOfferModal({ isOpen, onClose, onActivate, tim
                 variant="ghost"
                 className="w-full text-orange-200 hover:text-white hover:bg-white/10 transition-colors"
               >
-                Não, talvez depois
+                Não, obrigado
               </Button>
             </div>
 
             {/* Aviso de urgência */}
-            <p className="text-xs text-orange-200 font-medium">
-              ⏰ Esta oferta expira automaticamente em 24 horas!
+            <p className="text-xs text-orange-200 font-medium pt-4">
+              ⏰ Clique no botão acima, faça seu login e ative sua oferta!
             </p>
           </div>
         </div>

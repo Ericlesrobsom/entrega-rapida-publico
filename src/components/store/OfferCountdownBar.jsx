@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Gift, X } from 'lucide-react';
+import { Clock, Gift } from 'lucide-react';
 
-export default function OfferCountdownBar({ timeLeft, onExpire, onDismiss }) {
+export default function OfferCountdownBar({ timeLeft, onExpire }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -29,8 +29,8 @@ export default function OfferCountdownBar({ timeLeft, onExpire, onDismiss }) {
           <div className="flex items-center gap-3">
             <Gift className="w-5 h-5 text-yellow-300 animate-bounce" />
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm md:text-base">🔥 DESCONTO DE 20% ATIVO!</span>
-              <span className="hidden md:inline text-sm">Válido para 1 produto</span>
+              <span className="font-bold text-sm md:text-base">🔥 DESCONTO ATIVO!</span>
+              <span className="hidden md:inline text-sm">Aproveite sua oferta exclusiva!</span>
             </div>
           </div>
           
@@ -41,14 +41,6 @@ export default function OfferCountdownBar({ timeLeft, onExpire, onDismiss }) {
                 {formatTime(timeLeft)}
               </span>
             </div>
-            
-            <button
-              onClick={onDismiss}
-              className="text-white/70 hover:text-white transition-colors p-1"
-              title="Fechar"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
         </div>
       </div>

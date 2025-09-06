@@ -91,7 +91,7 @@ export default function RecentOrders({ orders, loading, darkMode = false }) {
                   darkMode ? 'border-gray-700' : 'border-slate-200'
                 }`}>
                   <span className={`font-semibold ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                    R$ {order.total_amount?.toFixed(2)}
+                    R$ {(order.total_amount || 0).toFixed(2)}
                   </span>
                   <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-slate-500'}`}>
                     {format(new Date(order.created_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}

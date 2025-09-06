@@ -22,7 +22,8 @@ import {
   Link as LinkIcon, // Adicionado para Links
   Moon,
   Sun,
-  Megaphone // Adicionado para Ofertas Globais
+  Megaphone, // Adicionado para Ofertas Globais
+  Users // Adicionado para Afiliados
 } from "lucide-react";
 import {
   Sidebar,
@@ -95,6 +96,11 @@ const navigationItems = [
     icon: ShoppingCart,
   },
   {
+    title: "Afiliados", 
+    url: createPageUrl("Affiliates"),
+    icon: Users,
+  },
+  {
     title: "Dúvidas", 
     url: createPageUrl("Questions"),
     icon: MessageCircle,
@@ -161,7 +167,7 @@ export default function Layout({ children, currentPageName }) {
   useEffect(() => {
     const checkAdminAccess = async () => {
       // Páginas públicas que não precisam de verificação - REMOVIDO SocialLinks daqui!
-      if (['Store', 'MyOrders', 'Home', 'custom', 'CoursePlayer', 'Links'].includes(currentPageName)) {
+      if (['Store', 'MyOrders', 'MyProfile', 'Home', 'custom', 'CoursePlayer', 'Links'].includes(currentPageName)) {
         setIsCheckingAuth(false);
         return;
       }
@@ -204,7 +210,7 @@ export default function Layout({ children, currentPageName }) {
   };
   
   // Renderiza apenas o conteúdo para páginas públicas E sites personalizados - SocialLinks removido!
-  if (['Store', 'MyOrders', 'Home', 'custom', 'CoursePlayer', 'Links'].includes(currentPageName)) {
+  if (['Store', 'MyOrders', 'MyProfile', 'Home', 'custom', 'CoursePlayer', 'Links'].includes(currentPageName)) {
     return children;
   }
 

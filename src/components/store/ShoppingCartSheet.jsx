@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -79,7 +80,7 @@ export default function ShoppingCartSheet({
                     </div>
                     <p className={`text-sm ${
                       darkMode ? 'text-gray-400' : 'text-slate-500'
-                    }`}>R$ {item.product.price.toFixed(2).replace('.', ',')}</p>
+                    }`}>R$ {(item.product.price || 0).toFixed(2).replace('.', ',')}</p>
                     <div className="flex items-center gap-2 mt-2">
                       <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onUpdateItem(item.product.id, item.quantity - 1)}>
                         <Minus className="h-3 w-3" />
@@ -114,12 +115,12 @@ export default function ShoppingCartSheet({
                     <div className="flex justify-between items-center text-sm">
                       <span className={darkMode ? 'text-gray-300' : 'text-slate-600'}>Subtotal:</span>
                       <span className={`line-through ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>
-                        R$ {originalTotal.toFixed(2).replace('.', ',')}
+                        R$ {(originalTotal || 0).toFixed(2).replace('.', ',')}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-green-500 font-medium">
                       <span><Gift className="w-4 h-4 inline mr-1" /> Desconto no 1º produto:</span>
-                      <span>-R$ {discountAmount.toFixed(2).replace('.', ',')}</span>
+                      <span>-R$ {(discountAmount || 0).toFixed(2).replace('.', ',')}</span>
                     </div>
                   </>
                 )}
@@ -128,7 +129,7 @@ export default function ShoppingCartSheet({
                     {isNewCustomerOfferActive && discountAmount > 0 ? "Total com Desconto:" : `${t.total}:`}
                   </span>
                   <span className="font-semibold text-xl text-[--store-primary]">
-                    R$ {calculateTotal.toFixed(2).replace('.', ',')}
+                    R$ {(calculateTotal || 0).toFixed(2).replace('.', ',')}
                   </span>
                 </div>
               </div>

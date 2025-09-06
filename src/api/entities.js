@@ -37,6 +37,10 @@ export const SocialLink = base44.entities.SocialLink;
 
 export const GlobalOffer = base44.entities.GlobalOffer;
 
+export const Commission = base44.entities.Commission;
+
+export const WithdrawalRequest = base44.entities.WithdrawalRequest;
+
 
 
 // auth sdk:

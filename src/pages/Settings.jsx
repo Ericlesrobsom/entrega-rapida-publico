@@ -10,8 +10,6 @@ import StoreCustomizationForm from "../components/settings/StoreCustomizationFor
 import AdvancedCustomization from "../components/settings/AdvancedCustomization";
 import PaymentMethodList from "../components/settings/PaymentMethodList";
 import PaymentMethodForm from "../components/settings/PaymentMethodForm";
-import GoogleDriveForm from "../components/settings/GoogleDriveForm";
-import GoogleDriveFoldersForm from "../components/settings/GoogleDriveFoldersForm";
 import { Toaster, toast } from 'sonner';
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,7 +34,7 @@ export default function Settings() {
       if (settingsList.length > 0) {
         setSettings(settingsList[0]);
       } else {
-        setSettings(null); // No settings found yet
+        setSettings(null);
       }
       setPaymentMethods(paymentMethodsData);
     } catch (error) {
@@ -70,14 +68,12 @@ export default function Settings() {
     setIsSaving(true);
     try {
       if (settings && settings.id) {
-        // Update existing settings with new data
         await SettingsEntity.update(settings.id, { ...settings, ...data });
       } else {
-        // Create new settings
         await SettingsEntity.create(data);
       }
       toast.success("Configurações salvas com sucesso!");
-      await loadSettings(); // Reload to get the latest data
+      await loadSettings();
     } catch (error) {
       console.error("Erro ao salvar configurações:", error);
       toast.error("Falha ao salvar as configurações.");
@@ -98,7 +94,7 @@ export default function Settings() {
         }
         setShowPaymentForm(false);
         setEditingPaymentMethod(null);
-        await loadSettings(); // Reload settings and payment methods
+        await loadSettings();
     } catch (error) {
         console.error("Erro ao salvar forma de pagamento:", error);
         toast.error("Falha ao salvar a forma de pagamento.");
@@ -112,7 +108,7 @@ export default function Settings() {
           try {
               await PaymentMethod.delete(id);
               toast.success("Forma de pagamento excluída.");
-              await loadSettings(); // Reload settings and payment methods
+              await loadSettings();
           } catch(error) {
               console.error("Erro ao excluir:", error);
               toast.error("Falha ao excluir.");
@@ -123,7 +119,7 @@ export default function Settings() {
   const handleEditPaymentMethod = (method) => {
       setEditingPaymentMethod(method);
       setShowPaymentForm(true);
-  }
+  };
 
   if (checkingAuth || loading) {
     return (
@@ -144,7 +140,6 @@ export default function Settings() {
           </div>
 
           <div className="space-y-8">
-            {/* Formulários existentes */}
             <StoreCustomizationForm
               initialSettings={settings}
               onSave={handleSaveSettings}
@@ -156,22 +151,7 @@ export default function Settings() {
               onSave={handleSaveSettings}
               isSaving={isSaving}
             />
-
-            {/* Nova seção Google Drive */}
-            <GoogleDriveForm
-              initialSettings={settings}
-              onSave={handleSaveSettings}
-              isSaving={isSaving}
-            />
-
-            {/* Novo formulário para pastas raiz */}
-            <GoogleDriveFoldersForm
-              initialSettings={settings}
-              onSave={handleSaveSettings}
-              isSaving={isSaving}
-            />
             
-            {/* Seção de Outras Formas de Pagamento */}
             <div className="space-y-4">
                 <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-8 mb-4">Formas de Pagamento Adicionais</h2>
                 <PaymentMethodList 

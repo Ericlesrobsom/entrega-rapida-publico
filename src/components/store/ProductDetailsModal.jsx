@@ -93,8 +93,10 @@ export default function ProductDetailsModal({ product, isOpen, onClose, onAddToC
       const coupon = coupons[0];
 
       if (coupon && coupon.current_uses < coupon.max_uses && (!coupon.expires_at || new Date(coupon.expires_at) > new Date())) {
-        const discountAmount = (product.price * coupon.discount_percentage) / 100;
-        setFinalPrice(product.price - discountAmount); // Update finalPrice state with coupon discount
+        // Calculate base price *before* coupon, which might already be discounted by new customer offer
+        const currentBasePriceForCoupon = isNewCustomerOfferActive ? product.price * 0.8 : product.price;
+        const discountAmount = (currentBasePriceForCoupon * coupon.discount_percentage) / 100;
+        setFinalPrice(currentBasePriceForCoupon - discountAmount); // Apply coupon discount on the current base price
         setAppliedCoupon(coupon);
         toast.success(`Cupom "${coupon.code}" aplicado!`);
       } else {
@@ -133,12 +135,15 @@ export default function ProductDetailsModal({ product, isOpen, onClose, onAddToC
   
   let priceColorClass;
   if (hasCouponApplied) {
-    priceColorClass = 'text-orange-500'; // Laranja quando cupom aplicado
+    priceColorClass = 'text-green-600'; // VERDE quando cupom aplicado
   } else if (hasAnyDiscount) {
-    priceColorClass = 'text-red-600'; // Vermelho quando há desconto (original_price ou newCustomerOffer)
+    priceColorClass = 'text-red-600'; // Vermelho quando há desconto
   } else {
     priceColorClass = darkMode ? 'text-white' : 'text-gray-900'; // Branco/normal sem desconto
   }
+
+  // Determinar o preço base para mostrar riscado quando cupom for aplicado
+  const basePrice = isNewCustomerOfferActive ? product.price * 0.8 : product.price;
 
   const handleClose = () => {
     setSelectedImage(null);
@@ -302,24 +307,36 @@ export default function ProductDetailsModal({ product, isOpen, onClose, onAddToC
               <div className={`p-4 rounded-lg space-y-3 border-2 ${appliedCoupon || isNewCustomerOfferActive ? 'border-green-400' : (darkMode ? 'border-gray-700' : 'border-gray-200')}`}>
                 <h3 className={`font-semibold text-lg ${darkMode ? 'text-white' : 'text-slate-900'}`}>Preço e Descontos</h3>
                 
-                {hasOriginalPrice && (
+                {/* MOSTRAR PREÇO ORIGINAL APENAS SE HOUVER DESCONTO NO PRODUTO E NENHUM CUPOM APLICADO */}
+                {hasOriginalPrice && !hasCouponApplied && (
                   <p className={`text-lg line-through text-center ${darkMode ? 'text-gray-500' : 'text-slate-400'}`}>
                     Preço Original: R$ {product.original_price?.toFixed(2).replace('.', ',')}
                   </p>
                 )}
+                
+                {/* QUANDO CUPOM APLICADO: Mostrar preço antes do cupom riscado em vermelho */}
+                {hasCouponApplied && (
+                  <p className="text-2xl line-through text-center text-red-600 font-bold">
+                    De: R$ {basePrice.toFixed(2).replace('.', ',')}
+                  </p>
+                )}
+                
                 <p className={`text-3xl font-bold text-center ${priceColorClass}`}>
                   R$ {finalPrice.toFixed(2).replace('.', ',')}
                 </p>
 
-                {isNewCustomerOfferActive && !appliedCoupon && (
-                  <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 mx-auto">
-                    <Gift className="w-3 h-3 mr-1" /> Desconto de boas-vindas! -20%
-                  </Badge>
+                {/* MOSTRAR DESCONTO DE BOAS-VINDAS */}
+                {isNewCustomerOfferActive && !hasCouponApplied && (
+                  <p className="text-md font-semibold text-green-500 text-center -mt-1">
+                    Desconto de boas-vindas! -20%
+                  </p>
                 )}
-                {appliedCoupon && !isNewCustomerOfferActive && (
-                  <Badge variant="secondary" className="bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 mx-auto">
-                    -{appliedCoupon.discount_percentage}% com cupom {appliedCoupon.code}
-                  </Badge>
+
+                {/* MOSTRAR INFORMAÇÃO DO CUPOM APLICADO */}
+                {hasCouponApplied && (
+                  <p className="text-md font-semibold text-green-600 text-center -mt-1">
+                    Cupom "{appliedCoupon.code}" aplicado! -{appliedCoupon.discount_percentage}%
+                  </p>
                 )}
 
                 <div className={`space-y-2 pt-3 border-t ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>

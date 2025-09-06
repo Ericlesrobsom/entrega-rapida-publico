@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingCart, User, Phone, MapPin, Edit, Truck, MoreVertical, Check, X, ChevronRight, CreditCard } from "lucide-react";
+import { ShoppingCart, User, Phone, MapPin, Edit, Truck, MoreVertical, Check, X, ChevronRight, CreditCard, Mail } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -107,6 +107,46 @@ function AssignDelivererDialog({ order, deliverers, onAssign }) {
  */
 function OrderCard({ order, deliverers, onEdit, onStatusChange, darkMode }) {
   const deliverer = deliverers.find(d => d.id === order.deliverer_id);
+  const [selectedDeliverer, setSelectedDeliverer] = useState(order.deliverer_id || "");
+
+  const confirmCommissions = async (orderId) => {
+    try {
+      const { Commission } = await import('@/api/entities');
+      
+      // Buscar comissões deste pedido
+      const orderCommissions = await Commission.filter({ order_id: orderId, status: 'pendente' });
+      
+      if (orderCommissions.length > 0) {
+        const now = new Date();
+        const availableDate = new Date(now);
+        availableDate.setDate(availableDate.getDate() + 7); // 7 dias no futuro
+
+        // Atualizar cada comissão
+        for (const commission of orderCommissions) {
+          await Commission.update(commission.id, {
+            status: 'confirmada',
+            confirmed_at: now.toISOString(),
+            available_for_withdrawal_at: availableDate.toISOString()
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao confirmar comissões:", error);
+    }
+  };
+
+  const handleStatusChange = async (newStatus) => {
+    try {
+      // Se o status está mudando para "entregue", confirmar as comissões
+      if (newStatus === 'entregue' && order.status !== 'entregue') {
+        await confirmCommissions(order.id);
+      }
+      
+      await onStatusChange(order.id, newStatus, selectedDeliverer || null);
+    } catch (error) {
+      console.error("Erro ao atualizar status do pedido:", error);
+    }
+  };
 
   return (
     <Card key={order.id} className={`shadow-lg hover:shadow-xl transition-all duration-300 border-0 ${darkMode ? 'bg-gray-800 text-white' : 'bg-white/80 backdrop-blur-sm'}`}>
@@ -124,6 +164,12 @@ function OrderCard({ order, deliverers, onEdit, onStatusChange, darkMode }) {
                     <Phone className="w-3 h-3" />
                     {order.customer_phone}
                   </div>
+                  {order.customer_email && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-3 h-3" />
+                      {order.customer_email}
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <MapPin className="w-3 h-3" />
                     {order.customer_address}
@@ -207,7 +253,7 @@ function OrderCard({ order, deliverers, onEdit, onStatusChange, darkMode }) {
                 {Object.keys(statusLabels).map((statusKey) => (
                   <DropdownMenuItem
                     key={statusKey}
-                    onClick={() => onStatusChange(order.id, statusKey)}
+                    onClick={() => handleStatusChange(statusKey)}
                     className={`${order.status === statusKey ? "font-bold" : ""} ${darkMode ? 'focus:bg-gray-700' : ''}`}
                   >
                     {statusKey === "confirmado" && <Check className="w-4 h-4 mr-2 text-green-500" />}

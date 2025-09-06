@@ -12,6 +12,7 @@ import { Advertisement } from "@/api/entities";
 import { Question } from "@/api/entities";
 import { Course } from "@/api/entities";
 import { CourseAccess } from "@/api/entities";
+import { Commission } from "@/api/entities"; // Importar nova entidade
 import { Search, X, MessageCircle, PlayCircle, Users, Clock, Moon, Sun, LayoutGrid, List } from "lucide-react";
 import ProductCard from "../components/store/ProductCard";
 import ShoppingCartSheet from "../components/store/ShoppingCartSheet";
@@ -77,11 +78,15 @@ function UserProfileMenu({ user, unreadMessagesCount, onOpenMessages, darkMode }
       {/* Botão do perfil */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-slate-600 text-white p-3 rounded-full hover:bg-slate-700 transition-colors flex items-center justify-center"
+        className="bg-slate-600 text-white rounded-full hover:bg-slate-700 transition-colors flex items-center justify-center w-12 h-12 overflow-hidden"
       >
-        <span className="font-medium">
-          {user ? getInitials(user.full_name) : "U"}
-        </span>
+        {user?.avatar_url ? (
+          <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+        ) : (
+          <span className="font-medium">
+            {user ? getInitials(user.full_name) : "U"}
+          </span>
+        )}
       </button>
 
       {isOpen && (
@@ -91,21 +96,41 @@ function UserProfileMenu({ user, unreadMessagesCount, onOpenMessages, darkMode }
             onClick={() => setIsOpen(false)}
           />
 
-          <div className={`absolute right-0 mt-2 w-64 rounded-lg shadow-lg border z-20 transition-colors duration-300 ${
+          {/* POSIÇÃO DO MENU CORRIGIDA */}
+          <div className={`absolute right-0 top-full mt-2 w-64 rounded-lg shadow-lg border z-20 transition-colors duration-300 ${
             darkMode 
               ? 'bg-gray-800 border-gray-700' 
               : 'bg-white border-gray-200'
           }`}>
-            <div className={`p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-              <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                {user?.full_name || "Usuário"}
-              </p>
-              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                {user?.email}
-              </p>
+            <div className={`p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'} flex items-center gap-3`}>
+              {user?.avatar_url && (
+                  <img src={user.avatar_url} alt="Avatar" className="w-10 h-10 rounded-full object-cover" />
+              )}
+              <div>
+                <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                  {user?.full_name || "Usuário"}
+                </p>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {user?.email}
+                </p>
+              </div>
             </div>
 
             <div className="py-2">
+              {/* NOVO LINK PARA "MEU PERFIL" */}
+              <a
+                href="/MyProfile"
+                className={`flex items-center gap-3 px-4 py-2 transition-colors ${
+                  darkMode 
+                    ? 'text-gray-300 hover:bg-gray-700 hover:text-white' 
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+                onClick={() => setIsOpen(false)}
+              >
+                <span>👤</span>
+                <span>Meu Perfil</span>
+              </a>
+
               <a
                 href="/MyOrders"
                 className={`flex items-center gap-3 px-4 py-2 transition-colors ${
@@ -232,7 +257,7 @@ export default function Store() {
   const [isNewCustomerOfferActive, setIsNewCustomerOfferActive] = useState(false);
   const [offerTimeLeft, setOfferTimeLeft] = useState(0);
   const [hasCheckedOffer, setHasCheckedOffer] = useState(false);
-  const [showOfferCountdown, setShowOfferCountdown] = useState(false); // NOVA STATE - controla só a exibição do cronômetro
+  // REMOVIDO o estado `showOfferCountdown`, o cronômetro não pode mais ser dispensado
 
 
   const t = translations[language];
@@ -328,60 +353,46 @@ export default function Store() {
     const discountAmount = getDiscountAmount();
     const finalTotal = originalTotal - discountAmount;
     
-    let finalPayload = { 
-      ...customerData, 
-      total_amount: originalTotal,
-      discount_amount: discountAmount,
-      final_total: finalTotal
-    };
-
-    // Se a oferta de novo cliente estiver ativa, aplicar o desconto no payload
-    if (isNewCustomerOfferActive && discountAmount > 0) {
-      finalPayload = {
-        ...finalPayload,
-        coupon_code: "NOVO CLIENTE 20% - 1 PRODUTO",
-      };
-    }
-
     try {
       const orderPayload = {
-        customer_name: finalPayload.name,
-        customer_phone: finalPayload.phone,
-        customer_address: finalPayload.address,
+        customer_name: customerData.name,
+        customer_phone: customerData.phone,
+        customer_address: customerData.address,
         customer_email: user.email,
         items: cart.map((item) => ({
           product_id: item.product.id,
-          product_name: item.product.name,
+          product_name: item.product.name || item.product.title,
           quantity: item.quantity,
           unit_price: item.product.price,
           total: item.product.price * item.quantity,
-          image_url: item.product.image_url,
+          image_url: item.product.image_url || item.product.thumbnail_url,
           digital_content: item.product.digital_content || null
         })),
         total_amount: originalTotal,
-        coupon_code: finalPayload.coupon_code || null,
-        discount_amount: finalPayload.discount_amount || 0,
-        final_total: finalPayload.final_total,
-        status: 'pendente',
-        delivery_fee: 0,
-        notes: finalPayload.notes || '',
-        payment_method: finalPayload.payment_method
+        coupon_code: customerData.coupon_code || null,
+        discount_amount: discountAmount,
+        final_total: finalTotal,
+        status: 'entregue',
+        delivery_fee: customerData.delivery_fee || 0,
+        notes: customerData.notes || '',
+        payment_method: customerData.payment_method
       };
 
       const newOrder = await Order.create(orderPayload);
       
-      // CRÍTICO: Criar o acesso ao curso para o aluno
-      for (const item of orderPayload.items) {
-        if (item.digital_content && item.digital_content.startsWith('course_access:')) {
-          const courseId = item.digital_content.split(':')[1];
-          if (courseId && user) { // Ensure user is defined before accessing its properties
-            await CourseAccess.create({
-              course_id: courseId,
-              student_email: user.email,
-              student_name: user.full_name,
-            });
-            toast.info("Seu acesso ao curso foi liberado!");
-          }
+      // CRIAR ACESSO PROS CURSOS - SEM FRESCURA
+      for (const item of cart) {
+        // Se tem 'title' é curso
+        if (item.product.title) {
+          await CourseAccess.create({
+            course_id: item.product.id,
+            student_email: user.email,
+            student_name: user.full_name || customerData.name,
+            access_type: 'purchased',
+            progress: 0,
+            completed_lessons: [],
+            is_active: true
+          });
         }
       }
 
@@ -389,22 +400,26 @@ export default function Store() {
       clearCart();
       setShowCheckout(false);
       
-      // Desativa a oferta permanentemente após a compra
+      toast.success("Pedido realizado com sucesso!");
+      
+      const courseCount = cart.filter(item => item.product.title).length;
+      if (courseCount > 0) {
+        toast.success(`🎓 Acesso liberado para ${courseCount} curso(s)! Vá para 'Meu Perfil' para acessar.`);
+      }
+
       if (isNewCustomerOfferActive) {
         if (typeof window !== 'undefined') {
           localStorage.setItem('newCustomerOfferUsed', 'true');
           localStorage.removeItem('newCustomerOfferActive');
           localStorage.removeItem('offerExpiresAt');
-          localStorage.removeItem('offerCountdownDismissed'); // Clear dismissed state as well
         }
         setIsNewCustomerOfferActive(false);
         setOfferTimeLeft(0);
-        setShowOfferCountdown(false); // Hide countdown
       }
 
     } catch (error) {
-      console.error("Failed to create order:", error);
-      setError("Failed to place order. Please try again.");
+      console.error("Erro no pedido:", error);
+      toast.error("Erro ao processar pedido. Tente novamente.");
     } finally {
       setIsSubmittingOrder(false);
     }
@@ -466,38 +481,61 @@ export default function Store() {
   }, []);
 
   const checkUserSession = useCallback(async () => {
+    // Evita re-execuções desnecessárias
+    if (hasCheckedOffer) return;
+    setHasCheckedOffer(true);
+
+    const offerUsed = typeof window !== 'undefined' && localStorage.getItem('newCustomerOfferUsed') === 'true';
+    const offerActive = typeof window !== 'undefined' && localStorage.getItem('newCustomerOfferActive') === 'true';
+    const offerShown = typeof window !== 'undefined' && localStorage.getItem('newCustomerOfferShown') === 'true';
+
+    // Se a oferta já foi usada ou está ativa, não mostramos o popup novamente.
+    // Mas ainda tentamos carregar os dados do usuário se houver um.
+    if (offerUsed || offerActive) {
+      try {
+        const loggedUser = await User.me();
+        setUser(loggedUser);
+        if (loggedUser) loadUnreadMessagesCount(loggedUser.email);
+      } catch (e) {
+        setUser(null);
+      }
+      return;
+    }
+    
     try {
+      // Tenta obter o usuário logado
       const currentUser = await User.me();
       setUser(currentUser);
 
-      // LÓGICA CORRIGIDA: Verificar se já foi mostrado, se está ativo, ou se foi usado
-      if (currentUser && !hasCheckedOffer) {
-        const userOrders = await Order.filter({ customer_email: currentUser.email });
-        const offerUsed = typeof window !== 'undefined' && localStorage.getItem('newCustomerOfferUsed') === 'true';
-        const offerActive = typeof window !== 'undefined' && localStorage.getItem('newCustomerOfferActive') === 'true';
-        const offerShown = typeof window !== 'undefined' && localStorage.getItem('newCustomerOfferShown') === 'true';
-
-        // SÓ MOSTRA A OFERTA SE:
-        // 1. Nunca comprou (userOrders.length === 0)
-        // 2. Nunca usou o bônus (!offerUsed) 
-        // 3. Não tem oferta ativa (!offerActive)
-        // 4. Nunca foi mostrado antes (!offerShown)
-        if (userOrders.length === 0 && !offerUsed && !offerActive && !offerShown) {
-          // É um novo cliente, mostrar a oferta após 2 segundos
-          setTimeout(() => setShowNewCustomerOffer(true), 2000);
-        }
-        setHasCheckedOffer(true); // Marca que a checagem foi feita
+      // LÓGICA PARA ATRIBUIR AFILIADO AO NOVO USUÁRIO
+      const referralCode = typeof window !== 'undefined' ? localStorage.getItem('referralCode') : null;
+      if (referralCode && currentUser && !currentUser.referred_by) {
+        // Se o usuário acabou de se cadastrar e tem um código de ref, atribui a ele.
+        await User.updateMyUserData({ referred_by: referralCode });
+        // Limpa o código para não ser usado novamente
+        localStorage.removeItem('referralCode'); 
       }
       
       if (currentUser) {
         loadUnreadMessagesCount(currentUser.email);
       }
+      
+      const userOrders = await Order.filter({ customer_email: currentUser.email });
+
+      // Para usuário LOGADO: só mostra se ele nunca comprou e nunca viu a oferta.
+      if (userOrders.length === 0 && !offerShown) {
+        setTimeout(() => setShowNewCustomerOffer(true), 2000);
+      }
     } catch (error) {
-      // Se não está logado, não mostra a oferta de novo cliente.
+      // ERRO = USUÁRIO NÃO ESTÁ LOGADO (é um visitante)
       setUser(null);
-      setHasCheckedOffer(true); // Marca que a checagem foi feita
+      
+      // Para VISITANTE: só mostra se ele nunca viu a oferta antes.
+      if (!offerShown) {
+        setTimeout(() => setShowNewCustomerOffer(true), 2000);
+      }
     }
-  }, [loadUnreadMessagesCount, hasCheckedOffer]);
+  }, [hasCheckedOffer, loadUnreadMessagesCount]);
 
   // Timer para controlar a expiração da oferta
   useEffect(() => {
@@ -521,7 +559,22 @@ export default function Store() {
     };
   }, [isNewCustomerOfferActive, offerTimeLeft]);
 
-  const handleActivateOffer = () => {
+  const handleActivateOffer = async () => {
+    // Se o usuário não estiver logado, redireciona para o login
+    if (!user) {
+      toast.info("Faça login para ativar seu bônus!", {
+        description: "Você será redirecionado em instantes...",
+      });
+      // Fecha o modal antes de redirecionar
+      setShowNewCustomerOffer(false);
+      setTimeout(async () => {
+        // Redireciona e informa para voltar para a página atual após o login
+        await User.loginWithRedirect(window.location.href);
+      }, 2000);
+      return;
+    }
+
+    // Se o usuário está logado, ativa a oferta normalmente
     const now = Date.now();
     const expiresAt = now + (24 * 60 * 60 * 1000); // 24 horas
     const timeLeftInSeconds = Math.floor((expiresAt - now) / 1000);
@@ -534,8 +587,7 @@ export default function Store() {
     
     setIsNewCustomerOfferActive(true);
     setOfferTimeLeft(timeLeftInSeconds);
-    setShowOfferCountdown(true); // Mostrar o cronômetro
-    setShowNewCustomerOffer(false);
+    setShowNewCustomerOffer(false); // Apenas fecha o modal
     
     toast.success("🎉 Desconto de 20% ativado! Válido por 24 horas no primeiro produto do carrinho.");
   };
@@ -543,25 +595,22 @@ export default function Store() {
   const handleOfferExpire = () => {
     setIsNewCustomerOfferActive(false);
     setOfferTimeLeft(0);
-    setShowOfferCountdown(false); // Hide the countdown bar
     if (typeof window !== 'undefined') {
       localStorage.removeItem('newCustomerOfferActive');
       localStorage.removeItem('offerExpiresAt');
-      localStorage.removeItem('offerCountdownDismissed'); // Limpar também o dismiss
       // NÃO remove o 'newCustomerOfferShown' - deixa lá para nunca mais mostrar
     }
     toast.info("Sua oferta de desconto expirou.");
   };
 
-  const handleDismissCountdown = () => {
-    // APENAS esconder o cronômetro, MAS manter o desconto nos produtos
-    setShowOfferCountdown(false);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('offerCountdownDismissed', 'true');
-    }
-  };
-
   useEffect(() => {
+    // RASTREAMENTO DO LINK DE AFILIADO
+    const urlParams = new URLSearchParams(window.location.search);
+    const refCode = urlParams.get('ref');
+    if (refCode) {
+      localStorage.setItem('referralCode', refCode);
+    }
+
     checkUserSession();
 
     const handleVisibilityChange = () => {
@@ -582,22 +631,16 @@ export default function Store() {
     if (typeof window !== 'undefined') {
       const offerActive = localStorage.getItem('newCustomerOfferActive') === 'true';
       const offerUsed = localStorage.getItem('newCustomerOfferUsed') === 'true';
-      const countdownDismissed = localStorage.getItem('offerCountdownDismissed') === 'true';
       const expiresAt = parseInt(localStorage.getItem('offerExpiresAt') || '0');
       
       if (offerActive && !offerUsed && expiresAt > Date.now()) {
         setIsNewCustomerOfferActive(true);
         setOfferTimeLeft(Math.floor((expiresAt - Date.now()) / 1000));
-        
-        // SÓ MOSTRAR O CRONÔMETRO SE NÃO FOI DISMISSED
-        if (!countdownDismissed) {
-          setShowOfferCountdown(true);
-        }
+        // O cronômetro agora sempre é exibido se a oferta estiver ativa, não precisa de um estado `showOfferCountdown`
       } else if (offerActive && expiresAt <= Date.now()) {
         // Oferta expirou, limpar localStorage
         localStorage.removeItem('newCustomerOfferActive');
         localStorage.removeItem('offerExpiresAt');
-        localStorage.removeItem('offerCountdownDismissed');
       }
       
       try {
@@ -707,9 +750,9 @@ export default function Store() {
   });
 
   const filteredCourses = courses.filter((course) => {
-    // MUDANÇA: Se não há categoria selecionada E não há pesquisa, mostrar apenas cursos em destaque
+    // CORREÇÃO: Mostrar TODOS os cursos ativos, não apenas os em destaque
     if (!selectedCategory && !searchTerm.trim()) {
-      return course.is_featured; // Mostrar apenas cursos em destaque
+      return true; // Mostrar todos os cursos ativos
     }
     
     // Se há pesquisa, funciona normalmente
@@ -733,8 +776,8 @@ export default function Store() {
     if (selectedCategory) {
       return selectedCategory.name;
     }
-    // MUDANÇA: Título para quando não há categoria selecionada
-    return t.featuredProducts; // Vai mostrar "Produtos em Destaque"
+    // CORREÇÃO: Título mais genérico para incluir cursos também
+    return "Produtos e Cursos"; // Mudou de "Produtos em Destaque" para algo mais geral
   };
 
   const handleAdClick = async (advertisement) => {
@@ -842,11 +885,10 @@ export default function Store() {
       <DynamicStyles settings={settings} />
 
       {/* CRONÔMETRO FIXO NO TOPO */}
-      {isNewCustomerOfferActive && showOfferCountdown && (
+      {isNewCustomerOfferActive && (
         <OfferCountdownBar 
           timeLeft={offerTimeLeft}
           onExpire={handleOfferExpire}
-          onDismiss={handleDismissCountdown}
         />
       )}
 
@@ -854,7 +896,7 @@ export default function Store() {
         darkMode 
           ? 'bg-gray-800 border-b border-gray-700' 
           : 'bg-white'
-      } ${isNewCustomerOfferActive && showOfferCountdown ? 'mt-16' : ''}`}>
+      } ${isNewCustomerOfferActive ? 'mt-16' : ''}`}> {/* Ajuste na altura do header */}
         <div className="flex items-center gap-4">
           {settings.store_logo_url &&
           <img src={settings.store_logo_url} alt="Logo" className="h-10 w-auto" />
@@ -918,7 +960,7 @@ export default function Store() {
         </div>
       </header>
 
-      <main className={`container mx-auto p-4 ${isNewCustomerOfferActive && showOfferCountdown ? 'pt-32' : 'pt-20'}`}>
+      <main className={`container mx-auto p-4 ${isNewCustomerOfferActive ? 'pt-32' : 'pt-20'}`}> {/* Ajuste no padding do main */}
         <BannerCarousel banners={getFilteredBanners()} />
 
         <section className="mb-6">
@@ -1068,7 +1110,6 @@ export default function Store() {
         cartItems={cart}
         onUpdateItem={handleUpdateCartItem}
         onRemoveItem={handleRemoveFromCart}
-        onClearCart={clearCart}
         onCheckout={handleInitiateCheckout}
         calculateTotal={calculateCartTotal()}
         originalTotal={cart.reduce((total, item) => total + item.product.price * item.quantity, 0)}
@@ -1148,10 +1189,10 @@ export default function Store() {
   function handleEnrollCourse(course) {
     // Tratar cursos como produtos especiais no carrinho
     const courseAsProduct = {
-      id: `course-${course.id}`, // Use a unique ID for courses in cart
-      name: course.title,
+      id: course.id, // Use the actual course ID
+      name: course.title, // Map course title to product name
       price: course.price,
-      image_url: course.thumbnail_url,
+      image_url: course.thumbnail_url, // Map course thumbnail to product image_url
       description: course.description,
       digital_content: `course_access:${course.id}`, // Identificador especial para cursos
       is_course: true // Flag para identificar que é um curso
