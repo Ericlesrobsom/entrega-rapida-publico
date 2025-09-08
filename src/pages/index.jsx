@@ -18,7 +18,7 @@ import Banners from "./Banners";
 
 import Home from "./Home";
 
-import teste-custom from "./teste-custom";
+import testeCustom from "./teste-custom";
 
 import Categories from "./Categories";
 
